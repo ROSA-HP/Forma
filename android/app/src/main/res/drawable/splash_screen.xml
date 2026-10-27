@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Fixes the vertically-stretched splash:
+      the old setup used the raw splash.png as the window background, and Android
+      scales raw bitmaps with "fill" gravity, so a 2:3 / 9:16 image was stretched onto
+      tall 20:9 phone screens. Now the background is a solid #0B0D10 shape (never
+      distorts, covers any area the bitmap misses) and the bitmap is drawn with
+      gravity="center", which preserves its aspect ratio on every screen size.
+      The PNGs were composited on the same #0B0D10, so edges are seamless.
+    -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0B0D10" />
+        </shape>
+    </item>
+
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash" />
+    </item>
+
+</layer-list>

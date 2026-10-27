@@ -868,6 +868,87 @@ export const SettingsScreen: React.FC = () => {
         </div>
       </section>
 
+      {/* 5B. Training Reminders & Mobile Notifications */}
+      <section className="p-4 rounded-xl bg-app-surface border border-app space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-app-accent text-xs font-bold uppercase tracking-wider">
+            <Bell className="w-4 h-4" />
+            <span>{t.remindersNotifications}</span>
+          </div>
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+            notifPermissionGranted
+              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+              : 'bg-app-surface-2 text-app-muted border-app'
+          }`}>
+            {notifPermissionGranted ? t.permissionGranted : t.permissionRequired}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-app-primary">{t.trainingReminders}</span>
+            <span className="text-xs text-app-muted">{t.trainingRemindersDesc}</span>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!notifPermissionGranted) {
+                await handleRequestNotifications();
+              } else {
+                await updateSettings({ notificationsEnabled: !settings.notificationsEnabled });
+              }
+            }}
+            className={`w-12 h-7 rounded-full transition-colors relative p-1 ${
+              settings.notificationsEnabled && notifPermissionGranted ? 'bg-app-accent' : 'bg-app-surface-2 border border-app'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full transition-transform ${
+                settings.notificationsEnabled && notifPermissionGranted
+                  ? 'translate-x-5 bg-on-accent'
+                  : 'translate-x-0 bg-app-muted'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Web Platform Behavior Notice */}
+        <div className="p-3 rounded-xl bg-app-surface-2 border border-app text-xs space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-amber-400">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>{t.webPlatformReminders}</span>
+          </div>
+          <p className="text-[11px] text-app-muted leading-relaxed">
+            {t.webRemindersNotice}
+          </p>
+        </div>
+
+        {/* Mobile Notification Preview */}
+        <div className="p-3 rounded-xl bg-app-surface-2 border border-app text-xs space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-app-accent">
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>{t.mobileNotificationsPreview}</span>
+          </div>
+          <p className="text-[11px] text-app-muted leading-relaxed">
+            {t.mobileNotificationsPreviewDesc}
+          </p>
+          <div className="mt-2 space-y-1 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-app-accent/15 font-mono">{t.notifWorkoutTitle}</span>
+              <span className="text-app-muted">{t.notifWorkoutBody}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-app-accent/15 font-mono">{t.notifIdleTitle}</span>
+              <span className="text-app-muted">{t.notifIdleBody}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-app-accent/15 font-mono">{t.notifOverdueTitle}</span>
+              <span className="text-app-muted">{t.notifOverdueBody}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* App Version / Local First Badge */}
       <footer className="text-center py-2 text-xs text-app-muted space-y-1">
         <p className="font-bold text-app-primary">{t.aboutVersion}</p>

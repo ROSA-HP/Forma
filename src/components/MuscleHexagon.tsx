@@ -184,6 +184,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
 
         {/* Current Filled Polygon */}
         <polygon
+          className="hex-poly"
           points={currentPoints}
           fill="var(--accent)"
           fillOpacity="0.2"
@@ -203,6 +204,8 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
               onClick={() => onSelectRegion?.(v.region)}
             >
               <circle
+                className="hex-dot"
+                style={{ animationDelay: `${180 + i * 60}ms` }}
                 cx={v.x}
                 cy={v.y}
                 r={isSmall ? 3 : (isSelected ? 5.5 : 4)}
@@ -218,7 +221,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
                   fill="none"
                   stroke={color}
                   strokeWidth="1.5"
-                  className="animate-ping"
+                  className="animate-ping ping-svg"
                 />
               )}
             </g>

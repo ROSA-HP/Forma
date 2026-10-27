@@ -582,11 +582,24 @@ export function calculateXP(
   };
 }
 
+/** Local calendar-day key "YYYY-MM-DD" — avoids the UTC off-by-one of Date#toISOString. */
+export function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, '0');
+  const day = `${d.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /**
- * Calculates active streak:
- * - A day counts if it has a completed workout, is an unscheduled/marked rest day, or is covered by a freeze.
- * - A missed scheduled workout breaks it. One automatic freeze per week.
- * - With no schedule, streak continues while the gap between workouts is <= 2 days.
+ * Calculates active streak (walks backwards from today):
+ * - Today never breaks the streak and never counts until a workout is logged.
+ * - Non-workout days (rest days, freeze-protected missed workouts) only count once an
+ *   older workout is found to anchor them, so inactive time never inflates the streak.
+ * - Without a schedule, the gap between workouts must be <= 2 days or the streak ends.
+ * - With a schedule, the first missed scheduled workout is protected by the automatic
+ *   freeze; a second consecutive missed scheduled workout breaks the streak.
+ * - Days are bucketed by the device's LOCAL calendar day on both sides (sessions are
+ *   stored as UTC ISO strings, so their local day is used, not the raw UTC prefix).
  */
 export function calculateStreak(
   sessions: Session[],
@@ -601,63 +614,72 @@ export function calculateStreak(
     return { currentStreak: 0, onFire: false, freezesRemaining: 1 };
   }
 
-  // Create date map of sessions: "YYYY-MM-DD"
+  // Session dates bucketed by LOCAL calendar day
   const sessionDates = new Set<string>();
   for (const s of sessions) {
-    const d = s.startedAt.split('T')[0];
-    sessionDates.add(d);
+    sessionDates.add(localDayKey(new Date(s.startedAt)));
   }
 
   const ref = new Date(referenceDate);
   ref.setHours(0, 0, 0, 0);
 
+  const hasSchedule = schedules.some(sc => sc.days.length > 0);
   let streak = 0;
-  let freezesUsed = 0;
-  let consecutiveRest = 0;
+  let pending = 0;            // allowed days waiting for an older workout to anchor them
+  let foundSession = false;
+  let consecutiveScheduledMisses = 0;
+  let freezesUsedThisWeek = 0;
 
   // Walk backwards day by day from today
   for (let i = 0; i < 90; i++) {
     const checkDate = new Date(ref);
     checkDate.setDate(checkDate.getDate() - i);
-    const dateStr = checkDate.toISOString().split('T')[0];
-    const isToday = i === 0;
+    const dateStr = localDayKey(checkDate);
 
     if (sessionDates.has(dateStr)) {
-      streak++;
-      consecutiveRest = 0;
-    } else {
-      if (isToday) {
-        // Today hasn't happened yet, do not break streak
-        continue;
+      // Commit this workout plus every allowed day between it and the previous anchor
+      foundSession = true;
+      streak += 1 + pending;
+      pending = 0;
+      consecutiveScheduledMisses = 0;
+      continue;
+    }
+
+    if (i === 0) {
+      // Today hasn't happened yet: do not break the streak, do not count it
+      continue;
+    }
+
+    // Check if scheduled
+    const dayOfWeek = (checkDate.getDay() + 6) % 7; // 0=Mon, 6=Sun
+    const isScheduled = schedules.some(sc => sc.days.includes(dayOfWeek));
+
+    if (isScheduled) {
+      consecutiveScheduledMisses++;
+      if (consecutiveScheduledMisses > 1) {
+        break; // Second consecutive missed scheduled workout: streak broken
       }
-
-      // Check if scheduled
-      const dayOfWeek = (checkDate.getDay() + 6) % 7; // 0=Mon, 6=Sun
-      const isScheduled = schedules.some(sc => sc.days.includes(dayOfWeek));
-
-      if (isScheduled) {
-        if (freezesUsed < 1) {
-          freezesUsed++;
-          streak++; // Protected by auto-freeze
-        } else {
-          break; // Streak broken
-        }
-      } else {
-        // Unscheduled rest day
-        consecutiveRest++;
-        if (consecutiveRest <= 2) {
-          streak++;
-        } else {
-          break;
-        }
+      if (i < 7) {
+        freezesUsedThisWeek = 1;
+      }
+      pending++; // First miss protected by the automatic weekly freeze
+    } else {
+      pending++;
+      if (!hasSchedule && pending > 2) {
+        break; // Gap between workouts exceeded 2 days with no schedule to protect it
       }
     }
+  }
+
+  // Without a workout anchoring the counted days, there is no streak
+  if (!foundSession) {
+    return { currentStreak: 0, onFire: false, freezesRemaining: 1 };
   }
 
   return {
     currentStreak: streak,
     onFire: streak >= 3,
-    freezesRemaining: Math.max(0, 1 - freezesUsed)
+    freezesRemaining: Math.max(0, 1 - freezesUsedThisWeek)
   };
 }
 

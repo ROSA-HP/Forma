@@ -3,6 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Schedule, Session } from '../types/index.ts';
 import { getTranslations } from '../i18n/index.ts';
 import { StorageService } from './storage.ts';
+import { localDayKey } from '../domain/calculations.ts';
 
 // Reserved ids sit above the range produced by getStableNotificationId (max 999_997),
 // so a rest/round timer notification can never overwrite a weekly reminder.
@@ -42,6 +43,11 @@ export interface INotificationService {
   cancelTimerNotifications(): Promise<void>;
   getPendingWorkoutAlert(): { title: string; body: string } | null;
   clearPendingWorkoutAlert(): void;
+  scheduleUpcomingWorkoutReminder(schedule: Schedule): Promise<void>;
+  scheduleOverdueWorkoutNudge(): Promise<void>;
+  scheduleIdleEncouragement(): Promise<void>;
+  cancelAllAppNotifications(): Promise<void>;
+  getNextScheduledWorkoutTime(schedules: Schedule[]): { schedule: Schedule; minutesUntil: number } | null;
 }
 
 class UniversalNotificationService implements INotificationService {
@@ -162,7 +168,7 @@ class UniversalNotificationService implements INotificationService {
   async rescheduleAll(schedules: Schedule[], sessions?: Session[]): Promise<void> {
     const t = await this.getT();
     const now = new Date();
-    const todayDateKey = now.toISOString().split('T')[0];
+    const todayDateKey = localDayKey(now);
     const todayDayOfWeek = (now.getDay() + 6) % 7; // 0=Mon, 6=Sun
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -217,7 +223,7 @@ class UniversalNotificationService implements INotificationService {
     // 2. Web In-app banner:
     // Only show if today's workout isn't done AND scheduled time hasn't passed yet
     const todayWorkoutDone = sessions
-      ? sessions.some(s => s.startedAt.startsWith(todayDateKey) && s.sets.some(st => st.done))
+      ? sessions.some(s => localDayKey(new Date(s.startedAt)) === todayDateKey && s.sets.some(st => st.done))
       : false;
 
     if (todayWorkoutDone) {
@@ -387,6 +393,182 @@ class UniversalNotificationService implements INotificationService {
 
   clearPendingWorkoutAlert(): void {
     this.inAppAlert = null;
+  }
+
+  /**
+   * Schedule a native reminder notification for the next upcoming workout
+   * (the soonest scheduled workout that hasn't passed yet today).
+   */
+  async scheduleUpcomingWorkoutReminder(schedule: Schedule): Promise<void> {
+    if (!schedule.reminderOn) return;
+    const t = await this.getT();
+    if (!Capacitor.isNativePlatform()) return;
+
+    const [hStr, mStr] = schedule.time.split(':');
+    const hour = parseInt(hStr, 10) || 8;
+    const minute = parseInt(mStr, 10) || 0;
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    if (target.getTime() <= now.getTime()) return; // already passed today
+
+    const capWeekday = ((now.getDay() + 6) % 7); // 0=Mon..6=Sun -> same as schedule.days
+    const dayIndex = schedule.days.indexOf(capWeekday);
+    if (dayIndex === -1) return; // not scheduled today
+
+    try {
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: getStableNotificationId(schedule.id, capWeekday) + 1000000,
+          title: t.notifWorkoutTitle,
+          body: `${t.notifWorkoutBody} — ${schedule.time} `,
+          schedule: { at: target, allowWhileIdle: true },
+        }],
+      });
+    } catch {
+      //
+    }
+  }
+
+  /**
+   * Fire an immediate overdue nudge: the user hasn't trained today
+   * and the scheduled time already passed.
+   */
+  async scheduleOverdueWorkoutNudge(): Promise<void> {
+    const t = await this.getT();
+    const now = new Date();
+    const todayDateKey = localDayKey(now);
+    const todayDayOfWeek = (now.getDay() + 6) % 7;
+
+    const todaySchedule = await this.getTodaySchedule(todayDayOfWeek);
+    if (!todaySchedule) return;
+
+    // Check if user already trained today
+    const hasTrained = await this.hasTrainedToday(todayDateKey);
+    if (hasTrained) return;
+
+    const [hStr, mStr] = todaySchedule.time.split(':');
+    const targetMinutes = (parseInt(hStr, 10) || 0) * 60 + (parseInt(mStr, 10) || 0);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (currentMinutes <= targetMinutes) return; // not overdue yet
+
+    const body = `${t.notifWorkoutBody} — ${todaySchedule.time} `;
+    await this.sendImmediateNotification(t.notifWorkoutTitle, body);
+  }
+
+  /**
+   * Send an encouraging notification if the user hasn't trained for a while
+   * (e.g., 2+ days since last session) and no workout is scheduled within the next 24h.
+   */
+  async scheduleIdleEncouragement(): Promise<void> {
+    const t = await this.getT();
+    const sessions = await StorageService.getSessions();
+    if (sessions.length === 0) return;
+
+    const now = new Date();
+    const todayDateKey = localDayKey(now);
+
+    // Last session date
+    const sorted = [...sessions].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+    const lastSessionDate = localDayKey(new Date(sorted[0].startedAt));
+    const lastSessionDt = new Date(sorted[0].startedAt);
+    const daysSinceLast = Math.floor((now.getTime() - lastSessionDt.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Already trained today?
+    if (todayDateKey === lastSessionDate) return;
+
+    // Only fire if idle 2+ days and no workout scheduled soon
+    if (daysSinceLast < 2) return;
+
+    const schedules = await StorageService.getSchedules();
+    const nextWorkout = this.getNextScheduledWorkoutTime(schedules);
+    if (nextWorkout && nextWorkout.minutesUntil < 24 * 60) return; // workout coming soon
+
+    const body = daysSinceLast >= 7
+      ? `${t.notifWorkoutBody} — you haven't trained in ${daysSinceLast} days. Let's get back on track!`
+      : `${t.notifWorkoutBody} — it's been ${daysSinceLast} days. Time to move!`;
+
+    await this.sendImmediateNotification(t.notifWorkoutTitle, body);
+  }
+
+  /**
+   * Cancel all app-related notifications (reminders + timer alerts).
+   */
+  async cancelAllAppNotifications(): Promise<void> {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const pending = await LocalNotifications.getPending();
+        if (pending.notifications.length > 0) {
+          await LocalNotifications.cancel({ notifications: pending.notifications });
+        }
+      } catch {
+        //
+      }
+    }
+    await this.cancelTimerNotifications();
+    this.inAppAlert = null;
+  }
+
+  /**
+   * Get the soonest upcoming workout from schedules, and minutes until it.
+   */
+  getNextScheduledWorkoutTime(schedules: Schedule[]): { schedule: Schedule; minutesUntil: number } | null {
+    const now = new Date();
+    const todayDayOfWeek = (now.getDay() + 6) % 7;
+    let soonest: { schedule: Schedule; minutesUntil: number } | null = null;
+
+    for (const sc of schedules) {
+      if (!sc.reminderOn) continue;
+      for (const day of sc.days) {
+        const daysUntil = ((day - todayDayOfWeek) + 7) % 7;
+        const [hStr, mStr] = sc.time.split(':');
+        const hour = parseInt(hStr, 10) || 8;
+        const minute = parseInt(mStr, 10) || 0;
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntil, hour, minute, 0);
+        const diffMs = target.getTime() - now.getTime();
+        if (diffMs > 0) {
+          const minutes = Math.floor(diffMs / 60000);
+          if (!soonest || minutes < soonest.minutesUntil) {
+            soonest = { schedule: sc, minutesUntil: minutes };
+          }
+        }
+      }
+    }
+    return soonest;
+  }
+
+  /**
+   * Helper: find today's schedule for a given day-of-week.
+   */
+  private async getTodaySchedule(dayOfWeek: number): Promise<Schedule | null> {
+    try {
+      const schedules = await this.getSchedules();
+      return schedules.find(sc => sc.reminderOn && sc.days.includes(dayOfWeek)) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Helper: check if user trained today (has a session with done sets).
+   */
+  private async hasTrainedToday(dateKey: string): Promise<boolean> {
+    const sessions = await StorageService.getSessions();
+    return sessions.some(s => {
+      if (!s.startedAt) return false;
+      const sDateKey = localDayKey(new Date(s.startedAt));
+      return sDateKey === dateKey && s.sets.some(st => st.done);
+    });
+  }
+
+  /**
+   * Helper: get schedules from storage.
+   */
+  private async getSchedules(): Promise<Schedule[]> {
+    try {
+      return await StorageService.getSchedules();
+    } catch {
+      return [];
+    }
   }
 }
 

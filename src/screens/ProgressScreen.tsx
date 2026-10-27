@@ -33,6 +33,26 @@ import {
   calculateAthleteTier, 
   ExercisePRDetail 
 } from '../domain/analyticsCalculations.ts';
+
+type PRTypeFilter = Partial<Record<PRTypeKey, boolean>>;
+type PRTypeKey = 'estimated1RM' | 'heaviestWeight' | 'maxReps' | 'volume';
+
+const DEFAULT_PR_TYPE_FILTER: PRTypeFilter = { estimated1RM: true, heaviestWeight: true, maxReps: true, volume: true };
+const PR_FILTER_LABELS: Record<PRTypeKey, string> = {
+  estimated1RM: '1RM',
+  heaviestWeight: 'Wt',
+  maxReps: 'Reps',
+  volume: 'Vol',
+};
+
+function prTypeI18nKey(key: PRTypeKey): keyof typeof import('../i18n/en.ts').en {
+  switch (key) {
+    case 'estimated1RM': return 'prEstimated1RM';
+    case 'heaviestWeight': return 'prHeaviestWeight';
+    case 'maxReps': return 'prRepetitionRecord';
+    case 'volume': return 'prTotalVolume';
+  }
+}
 import { REGION_ORDER, BAND_COLORS } from '../domain/constants.ts';
 import { Region, ExerciseCategory } from '../types/index.ts';
 
@@ -43,6 +63,7 @@ export const ProgressScreen: React.FC = () => {
   const [radarMetric, setRadarMetric] = useState<'volume' | 'recovery'>('volume');
   const [selectedRegion, setSelectedRegion] = useState<Region>('back');
   const [prCategoryFilter, setPrCategoryFilter] = useState<ExerciseCategory | 'all'>('all');
+  const [prTypeFilter, setPrTypeFilter] = useState<PRTypeFilter>({ estimated1RM: true, heaviestWeight: true, maxReps: true, volume: true });
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
 
   const exercisesMap = useMemo(() => {
@@ -113,10 +134,28 @@ export const ProgressScreen: React.FC = () => {
     return calculateExercisePRs(sessions, exercises);
   }, [sessions, exercisesMap]);
 
+  const hasAnyPR = (pr: ExercisePRDetail, key: PRTypeKey): boolean => {
+    if (key === 'estimated1RM') return pr.bestEstimated1RM > 0;
+    if (key === 'heaviestWeight') return pr.heaviestWeightKg > 0;
+    if (key === 'maxReps') return pr.maxReps > 0;
+    if (key === 'volume') return pr.lifetimeVolumeKg > 0;
+    return false;
+  };
+
   const filteredPRs = useMemo(() => {
-    if (prCategoryFilter === 'all') return exercisePRs;
-    return exercisePRs.filter(pr => pr.category === prCategoryFilter);
-  }, [exercisePRs, prCategoryFilter]);
+    let list: ExercisePRDetail[];
+    if (prCategoryFilter === 'all') {
+      list = exercisePRs;
+    } else {
+      list = exercisePRs.filter(pr => pr.category === prCategoryFilter);
+    }
+    return list.filter(pr =>
+      (prTypeFilter.estimated1RM ? hasAnyPR(pr, 'estimated1RM') : true) &&
+      (prTypeFilter.heaviestWeight ? hasAnyPR(pr, 'heaviestWeight') : true) &&
+      (prTypeFilter.maxReps ? hasAnyPR(pr, 'maxReps') : true) &&
+      (prTypeFilter.volume ? hasAnyPR(pr, 'volume') : true)
+    );
+  }, [exercisePRs, prCategoryFilter, prTypeFilter]);
 
   // Total Lifetime Volume tonnage
   const totalLifetimeVolumeKg = useMemo(() => {
@@ -458,6 +497,25 @@ export const ProgressScreen: React.FC = () => {
           </span>
         </div>
 
+        {/* PR Type Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {(['estimated1RM', 'heaviestWeight', 'maxReps', 'volume'] as PRTypeKey[]).map(key => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPrTypeFilter(prev => ({ ...prev, [key]: !prev[key] }))}
+              className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${
+                prTypeFilter[key]
+                  ? 'bg-app-accent/15 text-app-accent border-app-accent/40'
+                  : 'bg-app-surface-2 border-app text-app-muted hover:text-app-primary'
+              }`}
+              title={t[prTypeI18nKey(key) as keyof typeof t]}
+            >
+              {PR_FILTER_LABELS[key]}
+            </button>
+          ))}
+        </div>
+
         {/* Category Filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
@@ -497,69 +555,75 @@ export const ProgressScreen: React.FC = () => {
             </span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {filteredPRs.map(pr => (
-              <div
-                key={pr.exerciseId}
-                className="p-3.5 rounded-xl bg-app-surface-2 border border-app flex flex-col gap-2.5"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-app-primary">
-                      {pr.exerciseName}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-app-muted">
-                      {t[pr.category as keyof typeof t] || pr.category} · {pr.totalSetsCompleted} {t.sets.toLowerCase()} {t.logged}
-                    </span>
-                  </div>
+          <div className="flex flex-col gap-2">
+            {filteredPRs.map(pr => {
+              const show1RM = prTypeFilter.estimated1RM && hasAnyPR(pr, 'estimated1RM');
+              const showWeight = prTypeFilter.heaviestWeight && hasAnyPR(pr, 'heaviestWeight');
+              const showReps = prTypeFilter.maxReps && hasAnyPR(pr, 'maxReps');
+              const showVol = prTypeFilter.volume && hasAnyPR(pr, 'volume');
 
-                  {pr.bestEstimated1RM > 0 && (
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                        {t.prEstimated1RM}
+              return (
+                <div
+                  key={pr.exerciseId}
+                  className="p-2.5 rounded-xl bg-app-surface-2 border border-app flex items-center gap-3"
+                >
+                  {/* Exercise name + category */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-bold text-app-primary truncate">
+                        {pr.exerciseName}
                       </span>
-                      <span className="text-sm font-bold text-app-primary tabular-nums">
-                        {pr.bestEstimated1RM} kg
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-app-surface border border-app text-app-muted">
+                        {t[pr.category as keyof typeof t] || pr.category}
                       </span>
                     </div>
-                  )}
-                </div>
-
-                {/* PR Badges */}
-                <div className="grid grid-cols-3 gap-2 pt-1 border-t border-app text-xs">
-                  {/* Heaviest Weight */}
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-app-muted uppercase font-semibold">{t.heaviest}</span>
-                    <span className="font-bold text-app-primary tabular-nums mt-0.5">
-                      {pr.heaviestWeightKg > 0 ? `${pr.heaviestWeightKg}kg` : '—'}
-                      {pr.heaviestWeightReps ? ` × ${pr.heaviestWeightReps}` : ''}
+                    <span className="text-[10px] text-app-muted mt-0.5">
+                      {pr.totalSetsCompleted} {t.sets.toLowerCase()} {t.logged}
                     </span>
-                    {pr.heaviestWeightDate && (
-                      <span className="text-[9px] text-app-muted tabular-nums">{pr.heaviestWeightDate}</span>
+                  </div>
+
+                  {/* PR type badges row */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {show1RM && (
+                      <div className="text-right min-w-[44px]">
+                        <span className="block text-[8px] font-bold uppercase tracking-wider text-amber-400">1RM</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">
+                          {pr.bestEstimated1RM}
+                        </span>
+                        <span className="block text-[8px] text-app-muted">kg</span>
+                      </div>
+                    )}
+                    {showWeight && (
+                      <div className="text-right min-w-[44px]">
+                        <span className="block text-[8px] font-bold uppercase tracking-wider text-emerald-400">Wt</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">
+                          {pr.heaviestWeightKg}
+                        </span>
+                        <span className="block text-[8px] text-app-muted">kg × {pr.heaviestWeightReps}</span>
+                      </div>
+                    )}
+                    {showReps && (
+                      <div className="text-right min-w-[44px]">
+                        <span className="block text-[8px] font-bold uppercase tracking-wider text-sky-400">Reps</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">
+                          {pr.maxReps}
+                        </span>
+                        <span className="block text-[8px] text-app-muted">reps</span>
+                      </div>
+                    )}
+                    {showVol && (
+                      <div className="text-right min-w-[44px]">
+                        <span className="block text-[8px] font-bold uppercase tracking-wider text-violet-400">Vol</span>
+                        <span className="block text-xs font-black text-app-accent tabular-nums">
+                          {(pr.lifetimeVolumeKg / 1000).toFixed(1)}k
+                        </span>
+                        <span className="block text-[8px] text-app-muted">kg</span>
+                      </div>
                     )}
                   </div>
-
-                  {/* Max Reps */}
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-app-muted uppercase font-semibold">{t.reps}</span>
-                    <span className="font-bold text-app-primary tabular-nums mt-0.5">
-                      {pr.maxReps > 0 ? `${pr.maxReps} reps` : '—'}
-                    </span>
-                    {pr.maxRepsDate && (
-                      <span className="text-[9px] text-app-muted tabular-nums">{pr.maxRepsDate}</span>
-                    )}
-                  </div>
-
-                  {/* Lifetime Volume */}
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-app-muted uppercase font-semibold">{t.volume}</span>
-                    <span className="font-bold text-app-accent tabular-nums mt-0.5">
-                      {pr.lifetimeVolumeKg > 0 ? `${pr.lifetimeVolumeKg.toLocaleString()}kg` : '—'}
-                    </span>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

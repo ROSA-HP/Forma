@@ -18,7 +18,7 @@ import {
   kgToLb, 
   lbToKg 
 } from './calculations.ts';
-import { Exercise, Session, SetEntry } from '../types/index.ts';
+import { Exercise, Schedule, Session, SetEntry } from '../types/index.ts';
 
 test('epley1RM: calculates correct 1RM values', () => {
   // 1 rep should equal exact weight
@@ -242,6 +242,75 @@ test('calculateStreak: maintains streak with active training and rest protection
 
   const streak = calculateStreak(sessions, [], today);
   assert.ok(streak.currentStreak >= 1);
+});
+
+test('calculateStreak: a long gap with no training resets the streak to 0', () => {
+  const today = new Date(2026, 9, 27, 12, 0, 0);
+  const tenDaysAgo = new Date(2026, 9, 17, 12, 0, 0);
+
+  const sessions: Session[] = [{
+    id: 's-gap', number: 1,
+    startedAt: tenDaysAgo.toISOString(), endedAt: tenDaysAgo.toISOString(),
+    pausedMs: 0, xpGained: 100, sets: []
+  }];
+
+  // Last workout 10 days ago, no schedule: the gap rule (> 2 days) kills the streak,
+  // and the rest days after the workout must not be counted without an anchor.
+  const streak = calculateStreak(sessions, [], today);
+  assert.equal(streak.currentStreak, 0);
+});
+
+test('calculateStreak: rest days before the first workout do not inflate the streak', () => {
+  const today = new Date(2026, 9, 27, 12, 0, 0);
+  const twoDaysAgo = new Date(2026, 9, 25, 12, 0, 0);
+
+  const sessions: Session[] = [{
+    id: 's-first', number: 1,
+    startedAt: twoDaysAgo.toISOString(), endedAt: twoDaysAgo.toISOString(),
+    pausedMs: 0, xpGained: 100, sets: []
+  }];
+
+  // First-ever workout 2 days ago = workout + 1 rest day after it = 2.
+  // Rest days OLDER than the first workout are unanchored and must not count.
+  const streak = calculateStreak(sessions, [], today);
+  assert.equal(streak.currentStreak, 2);
+});
+
+test('calculateStreak: sessions are bucketed by local calendar day, not UTC', () => {
+  const today = new Date(2026, 9, 27, 12, 0, 0);
+
+  // UTC midnight of Oct 27 falls on Oct 26 or 28 locally depending on the offset.
+  // The walk must line up with the session\'s LOCAL day in every timezone.
+  const sessions: Session[] = [{
+    id: 's-utc', number: 1,
+    startedAt: '2026-10-27T00:00:00.000Z', endedAt: '2026-10-27T00:00:00.000Z',
+    pausedMs: 0, xpGained: 100, sets: []
+  }];
+
+  // Local day is Oct 26 for any non-zero offset and Oct 27 for UTC — either way
+  // exactly one counted day: the session itself, with no unanchored rest days.
+  const streak = calculateStreak(sessions, [], today);
+  assert.equal(streak.currentStreak, 1);
+});
+
+test('calculateStreak: freeze protects one missed scheduled workout, the next one breaks the streak', () => {
+  const today = new Date(2026, 9, 27, 12, 0, 0);
+  const yesterday = new Date(2026, 9, 26, 12, 0, 0);
+
+  const sessions: Session[] = [
+    { id: 's-today', number: 2, startedAt: today.toISOString(), endedAt: today.toISOString(), pausedMs: 0, xpGained: 100, sets: [] },
+    { id: 's-yday', number: 1, startedAt: yesterday.toISOString(), endedAt: yesterday.toISOString(), pausedMs: 0, xpGained: 100, sets: [] }
+  ];
+
+  const schedule: Schedule = {
+    id: 'sched', mode: 'weekly', days: [0, 1, 2, 3, 4, 5, 6],
+    time: '18:00', reminderOn: false, collectionId: 'c1'
+  };
+
+  // Today + yesterday count; day -2 is a missed scheduled day protected by the freeze;
+  // day -3 is the second consecutive miss → streak stops at 2.
+  const streak = calculateStreak(sessions, [schedule], today);
+  assert.equal(streak.currentStreak, 2);
 });
 
 test('estimateCalories and estimateMinutes utilities', () => {
