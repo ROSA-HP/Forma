@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline-variant": "#444933", "surface": "#111317", "surface-container-lowest": "#0c0e11", "on-tertiary-fixed-variant": "#005047", "surface-dim": "#111317", "secondary": "#a4c9ff", "on-primary-fixed-variant": "#3d4d00", "surface-container-high": "#282a2d", "error-container": "#93000a", "on-error-container": "#ffdad6", "secondary-fixed": "#d4e3ff", "on-primary-container": "#576c00", "outline": "#8f937a", "surface-container-highest": "#333538", "on-primary": "#293500", "surface-bright": "#37393d", "surface-container": "#1e2023", "tertiary": "#ffffff", "secondary-container": "#0267b8", "tertiary-fixed": "#62fae3", "on-secondary-container": "#d6e5ff", "on-tertiary-container": "#007165", "surface-variant": "#333538", "surface-tint": "#aed500", "primary-fixed": "#c8f31d", "background": "#111317", "surface-container-low": "#1a1c1f", "on-surface-variant": "#c5c9ad", "inverse-surface": "#e2e2e6", "inverse-on-surface": "#2f3034", "primary-container": "#c8f31d", "on-background": "#e2e2e6", "primary-fixed-dim": "#aed500", "on-secondary": "#00315d", "on-secondary-fixed": "#001c39", "tertiary-fixed-dim": "#3cddc7", "on-error": "#690005", "primary": "#ffffff", "on-tertiary-fixed": "#00201c", "secondary-fixed-dim": "#a4c9ff", "on-tertiary": "#003731", "on-primary-fixed": "#171e00", "tertiary-container": "#62fae3", "on-surface": "#e2e2e6", "on-secondary-fixed-variant": "#004883", "error": "#ffb4ab", "inverse-primary": "#526600" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter-desktop": "2rem", "space-xl": "2rem", "space-md": "1rem", "margin": "1rem", "gutter-tablet": "1.5rem", "space-2xl": "3rem", "space-lg": "1.5rem", "gutter": "1rem", "space-sm": "0.75rem", "space-2xs": "0.25rem", "margin-desktop": "3rem", "space-xs": "0.5rem", "margin-tablet": "2rem" }, "fontFamily": { "label-md": ["Geist"], "metric-xl": ["Geist"], "metric-md": ["Geist"], "label-sm": ["Geist"], "display-hero-mobile": ["Geist"], "display-hero": ["Geist"], "body-lg": ["Geist"], "body-sm": ["Geist"], "headline-sm": ["Geist"], "headline-lg": ["Geist"], "headline-lg-mobile": ["Geist"], "body-md": ["Geist"], "headline-md": ["Geist"] }, "fontSize": { "label-md": ["14px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600" }], "metric-xl": ["40px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "metric-md": ["24px", { "lineHeight": "28px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }], "display-hero-mobile": ["36px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-lg-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;min-height:100%;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Go Back" class="w-12 h-12 flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="text-headline-sm font-headline-sm uppercase tracking-tight text-on-surface font-semibold truncate">Pr Celebration Overlay</h1></div><div class="flex items-center gap-space-xs"><button aria-label="More options" class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[24px]">tune</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full relative pb-12">
+<!-- Full-Screen PR Celebration Overlay Modal -->
+<div class="relative w-full bg-[#0B0D10]/95 flex flex-col items-center justify-between p-4 sm:p-6 overflow-hidden">
+<!-- Geometric Celebratory Shapes (Electric Lime, Gold, Blue) -->
+<div aria-hidden="true" class="absolute inset-0 pointer-events-none overflow-hidden select-none">
+<svg class="w-full h-full" fill="none" viewbox="0 0 400 700" xmlns="http://www.w3.org/2000/svg">
+<!-- Floating Accent Diamonds, Triangles, Pluses, Lines -->
+<rect fill="#C8F31D" fill-opacity="0.9" height="10" transform="rotate(45 38 70)" width="10" x="38" y="70"></rect>
+<polygon fill="#FBBF24" fill-opacity="0.85" points="340,90 354,116 326,116"></polygon>
+<path d="M70 170 H86 M78 162 V178" stroke="#60A5FA" stroke-linecap="square" stroke-width="3"></path>
+<line stroke="#C8F31D" stroke-dasharray="4 3" stroke-width="2.5" x1="310" x2="334" y1="180" y2="196"></line>
+<circle cx="48" cy="280" fill="#FBBF24" r="4"></circle>
+<polygon fill="#60A5FA" points="360,290 372,308 348,308" transform="rotate(180 360 299)"></polygon>
+<rect height="12" stroke="#C8F31D" stroke-width="2" transform="rotate(25 24 410)" width="12" x="24" y="410"></rect>
+<path d="M344 430 H360 M352 422 V438" stroke="#FBBF24" stroke-width="3"></path>
+<line stroke="#60A5FA" stroke-width="2" x1="50" x2="80" y1="520" y2="520"></line>
+<rect fill="#C8F31D" height="8" transform="rotate(45 330 540)" width="8" x="330" y="540"></rect>
+<polygon fill="#FBBF24" fill-opacity="0.8" points="72,620 84,640 60,640"></polygon>
+<path d="M320 626 H334 M327 619 V633" stroke="#60A5FA" stroke-width="2"></path>
+</svg>
+</div>
+<!-- Top Navigation Row: Dismiss -->
+<div class="w-full flex items-center justify-between z-10 mb-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high text-primary-fixed text-label-sm font-label-sm tracking-wider uppercase">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+        Milestone Unlocked
+      </span>
+<button aria-label="Close PR celebration" class="w-12 h-12 rounded-lg bg-surface-container text-on-surface hover:text-primary hover:bg-surface-container-high flex items-center justify-center transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">close</span>
+</button>
+</div>
+<!-- Trophy Emblem & Titles -->
+<div class="relative z-10 flex flex-col items-center text-center mt-2 mb-6">
+<!-- High-contrast Badge -->
+<div class="relative flex items-center justify-center w-20 h-20 rounded-full bg-primary-fixed text-surface-container-lowest mb-4">
+<span class="material-symbols-outlined text-[44px]" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+<div class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-surface-container-lowest flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+</div>
+</div>
+<h2 class="text-display-hero-mobile font-display-hero-mobile text-primary tracking-tight uppercase">
+        NEW PR!
+      </h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant tracking-wider uppercase mt-1">
+        Personal Record Shattered
+      </p>
+<!-- Exercise Meta -->
+<div class="flex flex-wrap items-center justify-center gap-2 mt-3">
+<h3 class="text-headline-md font-headline-md text-on-surface">
+          Barbell Bench Press
+        </h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-label-sm font-label-sm uppercase bg-secondary-container/30 text-secondary">
+          GYM • COMPOUND
+        </span>
+</div>
+</div>
+<!-- PR Metric Dimension Chips -->
+<div class="w-full max-w-md z-10 grid grid-cols-4 gap-1.5 mb-5 p-1 bg-surface-container rounded-lg">
+<button class="flex flex-col items-center justify-center py-2 px-1 rounded bg-primary-fixed text-on-primary-fixed transition-colors" type="button">
+<span class="text-label-sm font-label-sm uppercase font-bold">Weight</span>
+<span class="text-label-sm font-label-sm text-[10px] opacity-80">+2.5%</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="text-label-sm font-label-sm uppercase">Reps</span>
+<span class="text-label-sm font-label-sm text-[10px] opacity-60">Matched</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="text-label-sm font-label-sm uppercase">Est. 1RM</span>
+<span class="text-label-sm font-label-sm text-[10px] opacity-60">+6.1%</span>
+</button>
+<button class="flex flex-col items-center justify-center py-2 px-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" type="button">
+<span class="text-label-sm font-label-sm uppercase">Volume</span>
+<span class="text-label-sm font-label-sm text-[10px] opacity-60">+150 kg</span>
+</button>
+</div>
+<!-- Previous vs New Value Hero Comparison Card -->
+<div class="w-full max-w-md z-10 bg-surface-container rounded-xl p-4 sm:p-5 mb-4">
+<div class="grid grid-cols-12 gap-2 items-center">
+<!-- Previous Record -->
+<div class="col-span-5 flex flex-col text-start">
+<span class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Previous</span>
+<span class="text-headline-sm font-headline-sm text-on-surface-variant tabular-nums mt-0.5">100.0 <span class="text-body-sm font-body-sm">kg</span></span>
+<div class="flex items-center gap-1.5 mt-1 text-on-surface-variant text-body-sm font-body-sm">
+<span>5 reps</span>
+<span class="text-surface-bright">•</span>
+<span>Oct 12</span>
+</div>
+</div>
+<!-- Delta Indicator -->
+<div class="col-span-2 flex flex-col items-center justify-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">trending_up</span>
+</div>
+<span class="text-label-sm font-label-sm text-primary-fixed mt-1 font-bold tabular-nums text-center">+2.5kg</span>
+</div>
+<!-- New Record Highlight -->
+<div class="col-span-5 flex flex-col text-end">
+<span class="text-label-sm font-label-sm text-primary-fixed uppercase tracking-wider font-semibold">New Record</span>
+<span class="text-headline-lg-mobile font-headline-lg-mobile text-primary-fixed font-bold tabular-nums mt-0.5">102.5 <span class="text-headline-sm font-headline-sm">kg</span></span>
+<div class="flex items-center justify-end gap-1.5 mt-1 text-on-surface text-body-sm font-body-sm font-medium">
+<span class="text-primary-fixed font-bold">6 reps</span>
+<span class="text-surface-bright">•</span>
+<span>Today</span>
+</div>
+</div>
+</div>
+<!-- Estimated 1RM Boost Strip -->
+<div class="w-full mt-4 pt-3.5 bg-surface-container-low rounded-lg p-3 flex items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">fitness_center</span>
+<span class="text-body-sm font-body-sm text-on-surface">Calculated 1RM</span>
+</div>
+<div class="flex items-center gap-1.5 tabular-nums text-label-md font-label-md">
+<span class="text-on-surface-variant">114 kg</span>
+<span class="text-on-surface-variant text-[12px]">→</span>
+<span class="text-primary font-bold">121 kg</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-fixed/20 text-primary-fixed text-label-sm font-label-sm font-bold ml-1">+7 kg</span>
+</div>
+</div>
+</div>
+<!-- Historic Context Card -->
+<div class="w-full max-w-md z-10 bg-surface-container-low rounded-xl p-3.5 mb-6 flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex-shrink-0 flex items-center justify-center text-[#FBBF24]">
+<span class="material-symbols-outlined text-[20px]">military_tech</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-body-md font-body-md text-on-surface leading-snug">
+          First bench press PR in <span class="text-primary-fixed font-semibold">42 days</span>.
+        </p>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
+          Top 5% lift intensity recorded across your current training block.
+        </p>
+</div>
+</div>
+<!-- Actions Area (High Friction Safe 48px touch targets, RTL-compliant) -->
+<div class="w-full max-w-md z-10 flex flex-col gap-2.5">
+<!-- Primary CTA: Nice! -->
+<button class="w-full h-12 rounded-xl bg-primary-fixed text-on-primary-fixed font-label-md text-label-md uppercase tracking-wider font-bold flex items-center justify-center gap-2 active:bg-primary-fixed-dim transition-colors" type="button">
+<span>Nice!</span>
+<span class="material-symbols-outlined text-[20px]">check</span>
+</button>
+<!-- Secondary CTA: Share Milestone -->
+<button class="w-full h-12 rounded-xl bg-surface-container text-on-surface font-label-md text-label-md uppercase tracking-wide font-medium flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+<span>Share Milestone</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Simple interactive dismissed trigger for prototype preview
+  document.addEventListener('DOMContentLoaded', () => {
+    const dismissButtons = document.querySelectorAll('button[aria-label="Close PR celebration"], button:has(span:contains("Nice!"))');
+    dismissButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const overlay = btn.closest('.flex.flex-col.w-full');
+        if (overlay) {
+          overlay.style.transition = 'opacity 0.2s ease-out';
+          overlay.style.opacity = '0.4';
+          setTimeout(() => {
+            overlay.style.opacity = '1';
+          }, 400);
+        }
+      });
+    });
+  });
+</script></main></body></html>

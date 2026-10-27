@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline-variant": "#444933", "surface": "#111317", "surface-container-lowest": "#0c0e11", "on-tertiary-fixed-variant": "#005047", "surface-dim": "#111317", "secondary": "#a4c9ff", "on-primary-fixed-variant": "#3d4d00", "surface-container-high": "#282a2d", "error-container": "#93000a", "on-error-container": "#ffdad6", "secondary-fixed": "#d4e3ff", "on-primary-container": "#576c00", "outline": "#8f937a", "surface-container-highest": "#333538", "on-primary": "#293500", "surface-bright": "#37393d", "surface-container": "#1e2023", "tertiary": "#ffffff", "secondary-container": "#0267b8", "tertiary-fixed": "#62fae3", "on-secondary-container": "#d6e5ff", "on-tertiary-container": "#007165", "surface-variant": "#333538", "surface-tint": "#aed500", "primary-fixed": "#c8f31d", "background": "#111317", "surface-container-low": "#1a1c1f", "on-surface-variant": "#c5c9ad", "inverse-surface": "#e2e2e6", "inverse-on-surface": "#2f3034", "primary-container": "#c8f31d", "on-background": "#e2e2e6", "primary-fixed-dim": "#aed500", "on-secondary": "#00315d", "on-secondary-fixed": "#001c39", "tertiary-fixed-dim": "#3cddc7", "on-error": "#690005", "primary": "#ffffff", "on-tertiary-fixed": "#00201c", "secondary-fixed-dim": "#a4c9ff", "on-tertiary": "#003731", "on-primary-fixed": "#171e00", "tertiary-container": "#62fae3", "on-surface": "#e2e2e6", "on-secondary-fixed-variant": "#004883", "error": "#ffb4ab", "inverse-primary": "#526600" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter-desktop": "2rem", "space-xl": "2rem", "space-md": "1rem", "margin": "1rem", "gutter-tablet": "1.5rem", "space-2xl": "3rem", "space-lg": "1.5rem", "gutter": "1rem", "space-sm": "0.75rem", "space-2xs": "0.25rem", "margin-desktop": "3rem", "space-xs": "0.5rem", "margin-tablet": "2rem" }, "fontFamily": { "label-md": ["Geist"], "metric-xl": ["Geist"], "metric-md": ["Geist"], "label-sm": ["Geist"], "display-hero-mobile": ["Geist"], "display-hero": ["Geist"], "body-lg": ["Geist"], "body-sm": ["Geist"], "headline-sm": ["Geist"], "headline-lg": ["Geist"], "headline-lg-mobile": ["Geist"], "body-md": ["Geist"], "headline-md": ["Geist"] }, "fontSize": { "label-md": ["14px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600" }], "metric-xl": ["40px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "metric-md": ["24px", { "lineHeight": "28px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "600" }], "display-hero-mobile": ["36px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-lg-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;min-height:100%;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-gutter flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Go Back" class="w-12 h-12 flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="text-headline-sm font-headline-sm uppercase tracking-tight text-on-surface font-semibold truncate">Active Workout Round Timer & Stepper</h1></div><div class="flex items-center gap-space-xs"><button aria-label="More options" class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[24px]">tune</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full pb-safe">
+<!-- Active Workout Header Context Bar -->
+<div class="flex flex-col w-full px-gutter pt-space-xs pb-space-sm bg-surface-container-low">
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
+<div class="flex items-center gap-space-2xs">
+<span class="w-2 h-2 rounded-full bg-primary-fixed animate-pulse"></span>
+<span class="font-headline-sm text-on-surface text-label-sm">Exercise 3 of 5</span>
+</div>
+<div class="flex items-center gap-space-xs font-mono tabular-nums text-primary-fixed">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span>24:18 ELAPSED</span>
+</div>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full mt-space-xs overflow-hidden flex">
+<div class="bg-primary-fixed h-full w-3/5"></div>
+<div class="bg-surface-variant h-full w-2/5"></div>
+</div>
+</div>
+<div class="flex flex-col w-full px-gutter py-space-md gap-space-lg">
+<!-- VARIANT 1: MARTIAL ARTS / BOXING ROUND TIMER -->
+<section class="flex flex-col w-full bg-surface-container rounded-xl p-space-md" style="outline: 1px solid #272C34;">
+<!-- Discipline Tag & Round Pill -->
+<div class="flex items-center justify-between gap-space-xs flex-wrap">
+<div class="inline-flex items-center gap-space-2xs px-space-sm py-1 rounded-full bg-rose-950/40 text-rose-300 font-label-sm text-label-sm uppercase tracking-wide" style="outline: 1px solid #FB7185;">
+<span>🥊</span>
+<span class="truncate">Heavy Bag Combinations · Martial Arts</span>
+</div>
+<div class="px-space-sm py-1 rounded bg-surface-container-highest text-on-surface font-label-md text-label-md tracking-wider uppercase font-mono">
+          Round <span class="text-primary-fixed font-bold">3</span> / 12
+        </div>
+</div>
+<!-- Main High-Contrast Timer HUD -->
+<div class="flex flex-col items-center justify-center my-space-md py-space-sm bg-surface-container-lowest rounded-lg" style="outline: 1px solid #272C34;">
+<span class="text-rose-400 font-label-sm text-label-sm uppercase tracking-widest font-mono flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+          Work Phase Active
+        </span>
+<div class="font-mono text-metric-xl text-primary font-bold tracking-tight select-none my-1 tabular-nums" id="boxing-timer" style="font-size: 5rem; line-height: 1;">
+          02:14
+        </div>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm">
+<span>Target: 3:00 Work</span>
+<span>•</span>
+<span>1:00 Rest</span>
+</div>
+</div>
+<!-- Segmented Work/Rest Progress Bar -->
+<div class="flex flex-col gap-1 w-full">
+<div class="flex justify-between items-center text-label-sm font-label-sm">
+<span class="text-rose-400 font-bold uppercase font-mono">3:00 Work (46s elapsed)</span>
+<span class="text-on-surface-variant uppercase font-mono">1:00 Rest</span>
+</div>
+<div class="flex w-full h-3 rounded bg-surface-container-highest overflow-hidden p-0.5 gap-0.5" style="outline: 1px solid #272C34;">
+<!-- 3 parts work, 1 part rest: total 4 parts -->
+<div class="flex-[3] h-full bg-surface-container flex rounded-sm overflow-hidden">
+<div class="h-full bg-rose-500 w-[26%] transition-all duration-300"></div>
+</div>
+<div class="flex-[1] h-full bg-surface-container flex rounded-sm overflow-hidden opacity-60">
+<div class="h-full bg-secondary w-0"></div>
+</div>
+</div>
+</div>
+<!-- Next Phase Preview -->
+<div class="flex items-center justify-between mt-space-xs px-space-sm py-2 rounded bg-surface-container-low text-on-surface-variant text-label-sm font-label-sm" style="outline: 1px solid #272C34;">
+<div class="flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-[16px] text-secondary">update</span>
+<span>Next Interval</span>
+</div>
+<span class="text-on-surface font-mono font-bold">60s Recovery Rest</span>
+</div>
+<!-- Hardware Audio Cues & Timer Controls -->
+<div class="grid grid-cols-4 gap-space-xs mt-space-sm">
+<!-- Bell Audio Cue Toggle -->
+<button class="h-12 flex flex-col items-center justify-center rounded-lg bg-surface-container-high text-primary-fixed hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+<span class="text-[9px] font-label-sm uppercase leading-none mt-0.5">Bell: On</span>
+</button>
+<!-- +10s Button -->
+<button class="h-12 flex items-center justify-center rounded-lg bg-surface-container-high text-on-surface font-mono font-bold hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+          +10s
+        </button>
+<!-- Pause / Resume Toggle -->
+<button class="h-12 flex items-center justify-center rounded-lg bg-primary-fixed text-on-primary-fixed font-bold hover:bg-primary-fixed-dim transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">pause</span>
+</button>
+<!-- Skip Round -->
+<button class="h-12 flex items-center justify-center rounded-lg bg-surface-container-high text-on-surface hover:text-rose-400 hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[20px]">skip_next</span>
+</button>
+</div>
+<!-- Per-Round Focus & Coaching Cue -->
+<div class="mt-space-sm p-space-sm rounded bg-surface-container-lowest flex items-start gap-space-xs" style="outline: 1px solid #272C34;">
+<span class="material-symbols-outlined text-[18px] text-rose-400 mt-0.5">priority_high</span>
+<div class="flex flex-col min-w-0">
+<span class="text-on-surface font-label-sm text-label-sm uppercase font-bold">Round 3 Target</span>
+<p class="text-on-surface-variant font-body-sm text-body-sm truncate">
+            Focus on jab-cross-hook cadence & strict lateral pivot off the ropes.
+          </p>
+</div>
+</div>
+</section>
+<!-- SECTION DIVIDER -->
+<div class="flex items-center gap-space-sm my-space-xs">
+<div class="h-px bg-surface-container-highest flex-1"></div>
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-widest font-mono">Variant 2: Calisthenics Steppers</span>
+<div class="h-px bg-surface-container-highest flex-1"></div>
+</div>
+<!-- VARIANT 2: CALISTHENICS BODYWEIGHT EXERCISE WITH STEPPERS -->
+<section class="flex flex-col w-full bg-surface-container rounded-xl p-space-md" style="outline: 1px solid #272C34;">
+<!-- Header & Discipline Category -->
+<div class="flex items-center justify-between gap-space-xs flex-wrap">
+<div>
+<div class="inline-flex items-center gap-space-2xs px-space-sm py-0.5 rounded-full bg-purple-950/40 text-purple-300 font-label-sm text-label-sm uppercase tracking-wide mb-1" style="outline: 1px solid #A78BFA;">
+<span>🤸</span>
+<span>Calisthenics</span>
+</div>
+<h2 class="text-headline-sm font-headline-sm text-on-surface font-bold">Weighted Pull-Up</h2>
+</div>
+<button aria-label="Exercise menu" class="w-12 h-12 flex items-center justify-center rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Segmented Load Switch: Added vs Assisted -->
+<div class="grid grid-cols-2 p-1 rounded-lg bg-surface-container-lowest mt-space-sm" style="outline: 1px solid #272C34;">
+<button class="h-10 flex items-center justify-center gap-1 rounded bg-surface-container-highest text-primary-fixed font-label-md text-label-md transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>Added Weight</span>
+</button>
+<button class="h-10 flex items-center justify-center gap-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+<span>Assisted Band</span>
+</button>
+</div>
+<!-- Set Rows Header -->
+<div class="grid grid-cols-12 gap-1 text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider px-space-xs mt-space-md">
+<span class="col-span-1 text-center font-mono">Set</span>
+<span class="col-span-5 text-start ps-2">Load (Bodyweight +)</span>
+<span class="col-span-4 text-center">Reps</span>
+<span class="col-span-2 text-center">Log</span>
+</div>
+<!-- SET 1: Completed State -->
+<div class="grid grid-cols-12 items-center gap-1 p-space-xs rounded-lg bg-surface-container-low mt-space-xs" style="outline: 1px solid #272C34;">
+<div class="col-span-1 text-center font-mono font-bold text-on-surface-variant text-label-md">1</div>
+<div class="col-span-5 flex flex-col ps-2">
+<span class="font-mono text-on-surface font-bold tabular-nums text-label-md">+15.0 <span class="text-on-surface-variant font-normal">kg</span></span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">RPE 8.5</span>
+</div>
+<div class="col-span-4 flex items-center justify-center">
+<span class="font-mono text-on-surface font-bold text-headline-sm tabular-nums">8</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm ms-1">reps</span>
+</div>
+<div class="col-span-2 flex justify-center">
+<button aria-label="Completed set 1" class="w-12 h-12 flex items-center justify-center rounded-lg bg-primary-fixed text-on-primary-fixed transition-transform active:scale-95" type="button">
+<span class="material-symbols-outlined text-[20px] font-bold">check</span>
+</button>
+</div>
+</div>
+<!-- SET 2: Active / Interactive Stepper State -->
+<div class="grid grid-cols-12 items-center gap-1 p-space-xs rounded-lg bg-surface-container-high mt-space-xs" style="outline: 1px solid #C8F31D;">
+<div class="col-span-1 text-center font-mono font-bold text-primary-fixed text-label-md">2</div>
+<!-- Load Stepper -->
+<div class="col-span-5 flex items-center gap-1">
+<button class="w-9 h-12 flex items-center justify-center rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors select-none font-bold text-lg" style="outline: 1px solid #272C34;" type="button">-</button>
+<div class="flex-1 flex flex-col items-center justify-center bg-surface-container-lowest h-12 rounded px-1" style="outline: 1px solid #272C34;">
+<span class="font-mono font-bold text-on-surface text-label-md tabular-nums leading-none">+17.5</span>
+<span class="text-[9px] font-mono text-on-surface-variant uppercase mt-0.5">kg load</span>
+</div>
+<button class="w-9 h-12 flex items-center justify-center rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors select-none font-bold text-lg" style="outline: 1px solid #272C34;" type="button">+</button>
+</div>
+<!-- Reps Stepper -->
+<div class="col-span-4 flex items-center gap-1">
+<button class="w-9 h-12 flex items-center justify-center rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors select-none font-bold text-lg" style="outline: 1px solid #272C34;" type="button">-</button>
+<div class="flex-1 flex flex-col items-center justify-center bg-surface-container-lowest h-12 rounded px-1" style="outline: 1px solid #272C34;">
+<span class="font-mono font-bold text-primary-fixed text-headline-sm tabular-nums leading-none">6</span>
+<span class="text-[9px] font-mono text-on-surface-variant uppercase mt-0.5">target</span>
+</div>
+<button class="w-9 h-12 flex items-center justify-center rounded bg-surface-container text-on-surface hover:bg-surface-container-highest transition-colors select-none font-bold text-lg" style="outline: 1px solid #272C34;" type="button">+</button>
+</div>
+<!-- Checkmark Toggle -->
+<div class="col-span-2 flex justify-center">
+<button aria-label="Mark set 2 complete" class="w-12 h-12 flex items-center justify-center rounded-lg bg-surface-container text-primary-fixed hover:bg-surface-container-highest transition-all" style="outline: 1px solid #C8F31D;" type="button">
+<span class="material-symbols-outlined text-[20px]">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+<!-- SET 3: Queued State -->
+<div class="grid grid-cols-12 items-center gap-1 p-space-xs rounded-lg bg-surface-container-low mt-space-xs opacity-75" style="outline: 1px solid #272C34;">
+<div class="col-span-1 text-center font-mono text-on-surface-variant text-label-md">3</div>
+<div class="col-span-5 flex flex-col ps-2">
+<span class="font-mono text-on-surface font-bold tabular-nums text-label-md">+17.5 <span class="text-on-surface-variant font-normal">kg</span></span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">Target RPE 9</span>
+</div>
+<div class="col-span-4 flex items-center justify-center">
+<span class="font-mono text-on-surface font-bold text-headline-sm tabular-nums">6</span>
+<span class="text-on-surface-variant font-body-sm text-body-sm ms-1">reps</span>
+</div>
+<div class="col-span-2 flex justify-center">
+<button aria-label="Set 3 pending" class="w-12 h-12 flex items-center justify-center rounded-lg bg-surface-container-highest text-on-surface-variant" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+</button>
+</div>
+</div>
+<!-- Set Modification Actions -->
+<div class="flex items-center gap-space-xs mt-space-md">
+<button class="flex-1 h-12 flex items-center justify-center gap-1 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>Add Set</span>
+</button>
+<button class="h-12 px-space-md flex items-center justify-center gap-1 rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span>History</span>
+</button>
+</div>
+</section>
+<!-- WORKOUT TERMINATION CONTROLS (Persistent Bottom Stack) -->
+<div class="flex items-center gap-space-xs mt-space-xs mb-space-lg">
+<button class="h-12 px-space-md flex items-center justify-center gap-space-2xs rounded-lg bg-surface-container-high text-rose-400 font-label-md text-label-md hover:bg-surface-container-highest transition-colors" style="outline: 1px solid #272C34;" type="button">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+<span>End Early</span>
+</button>
+<button class="flex-1 h-12 flex items-center justify-center gap-space-2xs rounded-lg bg-primary-fixed text-on-primary-fixed font-bold font-label-md text-label-md hover:bg-primary-fixed-dim transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px] font-bold">check_circle</span>
+<span>Finish & Next Exercise</span>
+</button>
+</div>
+</div>
+</div></main></body></html>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Transparent foreground for the Android adaptive icon: content kept inside
+       the 66dp safe zone of the 108dp canvas. -->
+  <g transform="translate(256 256) scale(0.66) translate(-256 -256)">
+    <polygon points="256,46 438,151 438,361 256,466 74,361 74,151" fill="#C8F31D"/>
+    <path d="M287 116 L171 281 L243 281 L221 404 L345 232 L264 232 Z" fill="#0B0D10"/>
+  </g>
+</svg>

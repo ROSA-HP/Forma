@@ -1,0 +1,101 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+
+@layer base {
+  :root {
+    --bg: #0B0D10;
+    --surface: #14171C;
+    --surface-2: #1C2027;
+    --border: #272C34;
+    --text: #F2F4F7;
+    --muted: #9AA3AF;
+    --accent: #C8F31D;
+    --on-accent: #0B0D10;
+
+    /* Category colors */
+    --cat-gym: #60A5FA;
+    --cat-calisthenics: #A78BFA;
+    --cat-martial-arts: #FB7185;
+    --cat-cardio: #FBBF24;
+    --cat-custom: #2DD4BF;
+
+    /* Bands */
+    --band-deficit: #F87171;
+    --band-maint: #60A5FA;
+    --band-optimal: #C8F31D;
+    --band-peak: #FBBF24;
+  }
+
+  html.light {
+    --bg: #F6F7F9;
+    --surface: #FFFFFF;
+    --surface-2: #EEF0F3;
+    --border: #E2E5EA;
+    --text: #0F1318;
+    --muted: #5B6573;
+    --accent: #4D7C0F;
+    --on-accent: #FFFFFF;
+  }
+
+  html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Arabic fallback system stack when dir="rtl" */
+  html[dir="rtl"], html.rtl {
+    font-family: system-ui, -apple-system, 'Segoe UI', 'Cairo', 'Almarai', 'Tajawal', sans-serif;
+  }
+
+  /* Force tabular numerals across all numbers */
+  .tabular-nums, input[type="number"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Remove native number-input spinners (the white up/down buttons) */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Custom utilitarian utility classes */
+.bg-app-bg { background-color: var(--bg); }
+.bg-app-surface { background-color: var(--surface); }
+.bg-app-surface-2 { background-color: var(--surface-2); }
+.border-app { border-color: var(--border); }
+.text-app-primary { color: var(--text); }
+.text-app-muted { color: var(--muted); }
+.bg-app-accent { background-color: var(--accent); }
+.text-app-accent { color: var(--accent); }
+.text-on-accent { color: var(--on-accent); }
+.border-app-accent { border-color: var(--accent); }
+
+/* Hide scrollbars cleanly */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

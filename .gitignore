@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+dev-dist/
+.aistudio/
+.tools/
+coverage/
+.DS_Store
+*.log
+.env*
+/freebuff-sites-build/

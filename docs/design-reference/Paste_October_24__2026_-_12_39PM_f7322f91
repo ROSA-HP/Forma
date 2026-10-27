@@ -1,0 +1,164 @@
+Build "TrainLog": a local-first, mobile-first workout tracker using React + TypeScript + Vite + Tailwind CSS + Recharts. It must work as an installable PWA and be ready to wrap with Capacitor for Android/iOS later. It tracks gym, calisthenics, martial arts and cardio training, groups exercises into named collections, schedules workouts with reminders, and shows progress, muscle balance and achievements.
+
+WORKING METHOD
+Build in phases. Do ONLY Phase 1 now, then stop and wait for me to say "continue".
+Phase 1: foundation (architecture, tokens, themes, i18n/RTL, services, domain functions + unit tests, data model, seed data, navigation shell, onboarding, settings)
+Phase 2: Library (Exercises | Collections), Add/Edit Exercise, Collection Detail
+Phase 3: Active Workout (all tracking types), logging engine, PR detection and celebration, Workout Summary, draft autosave and resume
+Phase 4: Home, Calendar and schedules, reminders, streak, XP/level, achievements
+Phase 5: Progress (Exercise and Overview modes), muscle hexagon, anatomical heatmap, body measurements
+Phase 6: motion polish, PWA, README
+
+ATTACHED REFERENCES (Stitch screenshots + DESIGN.md). Match layout, hierarchy and components, but apply the deviations below.
+- trainlog_unified_home: Home base. For final Home states use home_readiness_hexagon_radar and home_resume_workout_card.
+- trainlog_unified_active_workout: Active Workout (weight + reps).
+- active_workout_round_timer_stepper: Round Timer and bodyweight stepper variants. The "Variant 2" divider is a design annotation, not UI. The two variants are separate exercise types shown one at a time.
+- trainlog_unified_calendar_milestones: Calendar.
+- trainlog_library_collections: Library. collection_detail_push_day: Collection Detail. add_edit_exercise: Add/Edit Exercise.
+- workout_summary_muscle_radar: Workout Summary. pr_celebration_overlay: PR celebration.
+- trainlog_progress_overview + progress_overview_muscle_balance_radar: ONE screen, Progress > Overview. trainlog_advanced_anatomical_heatmap: heatmap card and Progress > Exercise mode.
+- Text in screenshot headers such as "/ HOME WITH RESUME WORKOUT CARD" or "PR CELEBRATION OVERLAY" are Stitch page names, not UI. Use real screen titles.
+- Screens with NO reference (design them from the design system): Settings/More, Onboarding, Achievements, Body Measurements, empty states, toasts, dialogs, light theme.
+
+ARCHITECTURE
+- Every platform feature sits behind a service interface with a web and a native implementation, chosen at runtime via Capacitor.isNativePlatform():
+  a) StorageService: IndexedDB on web, Capacitor Preferences/SQLite natively. Schema is versioned (schemaVersion + migrations), and export files carry the version. ALL weights are stored in kg and converted only for display.
+  b) NotificationService: scheduleReminder, cancelReminder, rescheduleAll. @capacitor/local-notifications natively; web Notification API + an in-app "You have a workout today" banner as fallback. Call rescheduleAll whenever a schedule changes and whenever the app opens. Never block the UI on a permission prompt; show a friendly explainer first.
+  c) HapticsService (Capacitor Haptics / navigator.vibrate), SoundService (set beep, rest-end beep, round bell, PR sound).
+  d) KeepAwakeService (@capacitor-community/keep-awake natively, Screen Wake Lock API on web), active during a workout.
+  e) ShareService (Capacitor Share natively, Web Share API with a copy/download fallback).
+- Capacitor-ready: relative asset paths, output in /dist, no runtime CDN dependencies, no browser-only API without a fallback.
+- Domain layer: all calculations (formulas below) are pure, typed functions in /domain with Vitest unit tests (epley1RM, workingVolume, detectPRs, smartTarget, muscleLoad, regionValues, recovery, streak, xp, estimateMinutes, kcal).
+- Timers (elapsed, rest, round) are computed from stored timestamps, never from a ticking counter, so they stay correct when the app is backgrounded.
+
+DATA MODEL
+- Exercise {id, name, category, equipment, primaryMuscles[], secondaryMuscles[], conditioning (boolean, for cardio with no muscle target), trackingType, defaultRestSec, defaultRepMin/Max, incrementKg, roundConfig {roundSec, restSec, rounds} (rounds type only), notes, videoUrl, isPinned, isArchived, source: builtin|custom}
+- trackingType: weight_reps | bodyweight (signed load: +added or -assisted) | reps | duration | distance_time | rounds
+- equipment: barbell|dumbbell|machine|cable|kettlebell|bodyweight|band|bag|cardio_machine|other
+- Collection {id, name, goal: strength|hypertrophy|endurance|power|skill|conditioning, items[]}; CollectionItem {exerciseId, role: warmup|compound|isolation|finisher|skill|cooldown, sets, repsMin, repsMax, restSec, note}
+- Goal presets (prefill only): Strength 3-6 reps / 150-180s rest, Hypertrophy 6-12 / 60-90s, Endurance 15+ / 30-45s.
+- Session {id, number, startedAt, endedAt, pausedMs, collectionId?, locationId?, effort, notes, xpGained, sets[]}; SetEntry {exerciseId, loadKg (signed for bodyweight), reps, durationSec, distanceM, rounds, rpe (0.5 steps), tag: normal|warmup|drop|failure, done}
+- Schedule {mode: weekly|cycle, days[] or cycle[], time, reminderOn, collectionId}; BodyMeasurement; Location {id, name} (user-named places only, NO GPS, no city); Achievement; Settings; ActiveSessionDraft.
+- 18 muscle groups (one i18n dictionary used on every screen): chest, traps, lats, lower_back, front_delts, side_delts, rear_delts, biceps, triceps, forearms, abs, obliques, glutes, quads, hamstrings, calves, adductors, hip_flexors.
+- 6 regions: Chest=[chest]; Delts=[front_delts, side_delts, rear_delts]; Arms=[biceps, triceps]; Back=[lats, traps, lower_back]; Legs=[quads, hamstrings, glutes, calves]; Core=[abs, obliques]. Forearms, adductors, hip_flexors appear only on the heatmap. REGION_ORDER (clockwise from top) is a single constant used everywhere: Chest, Delts, Arms, Back, Legs, Core.
+
+DESIGN SYSTEM ("Lime Night", flat)
+- Dark (default): --bg #0B0D10, --surface #14171C, --surface-2 #1C2027, --border #272C34, --text #F2F4F7, --muted #9AA3AF, --accent #C8F31D, --on-accent #0B0D10.
+- Light (derived from tokens; no Stitch screens exist): --bg #F6F7F9, --surface #FFFFFF, --surface-2 #EEF0F3, --border #E2E5EA, --text #0F1318, --muted #5B6573, --accent #4D7C0F, --on-accent #FFFFFF. Keep AA contrast.
+- Themes System / Dark / Light via CSS variables mapped into Tailwind (darkMode: 'class'); update <meta name="theme-color">.
+- Category colors from ONE CATEGORY_COLORS map: Gym #60A5FA, Calisthenics #A78BFA, Martial Arts #FB7185, Cardio #FBBF24, Custom #2DD4BF. Success #34D399, danger #F87171. Danger red is only for errors and destructive actions.
+- BAND_COLORS (one map, always paired with a text label): deficit #F87171, maintenance #60A5FA, optimal = accent, peak #FBBF24.
+- Font: Geist self-hosted via @fontsource-variable/geist (latin subset), system fallback. Geist does not cover Arabic, so Arabic uses the system Arabic font stack. ALL numbers use tabular-nums. NO monospace fonts anywhere, including the big timers.
+- Type scale from the reference: metric-xl 40/44, metric-md 24/28, headlines 26/22/18, body 16/14/12, labels 14 and 11 (uppercase only for category/status tags).
+- Shapes: cards 12-16px radius, buttons/inputs 12px, chips 6px, 48px minimum touch targets, 4px grid.
+- Icons: lucide-react, imported individually (map each Material Symbol in the reference to the nearest lucide icon).
+- Category chips: 3px leading border strip in the category color (trailing in RTL) + 10% tint.
+- Bottom nav: Home, Library, Calendar, Progress, More. Floating rounded bar, solid surface, 1px border, labels always visible (11px uppercase), active tab in accent. Reserve 96px bottom padding.
+- AppHeader (one component): bolt logo + "TrainLog" + optional small screen subtitle, StreakChip, avatar (opens More). The StreakChip shows the same live value everywhere except Progress, which has its own streak card. Flow screens (Collection Detail, Active Workout, Summary, Add/Edit Exercise, PR overlay) hide the tab bar and show one header (back arrow + real title) plus a sticky bottom action bar. The PR overlay shows only a close button.
+
+DEVIATIONS FROM THE REFERENCE (important)
+1. FLAT ONLY: no backdrop-blur, no blur filters, no drop shadows. Separation comes from borders and tone steps. The hero-card glow is a CSS radial-gradient (accent at ~12% opacity), not a blurred element.
+2. NO EXTERNAL ASSETS: no Tailwind CDN (compile with Vite), no Google Fonts, no Material Symbols font, no hosted photos.
+3. RTL: logical utilities only (ms-, me-, ps-, pe-, start-, end-, text-start, border-s). Timers, numbers and chart geometry stay LTR; chevrons, nav and layouts mirror. English and Arabic through a lightweight i18n dictionary; numbers stay Western digits.
+4. NO HARDCODED SAMPLE DATA: dates, names, streaks, counts, units, session numbers, places all come from real data (e.g. "35 lbs" follows the unit setting; "240+ exercises" is computed). The name is optional from onboarding; the greeting omits it if empty. Times show mm:ss under one hour and h:mm:ss after.
+5. Selected states = accent (or category) border + 10% tint + check icon, never a faint fill change.
+6. Names wrap to 2 lines in list rows (no "Barbell Bench ..."); stat tiles wrap or shrink instead of overflowing; chart labels stay inside the viewBox with padding.
+7. Rename "AI Target" to "Smart target" (it is a rule, not an AI model). Remove "Top 5% intensity" claims (see PR rules).
+8. Future sets in a workout are dimmed but editable, never locked.
+9. Heatmap/hexagon color is never the only signal: always show the % or set count.
+
+FORMULAS (use exactly these; show "est." where approximate)
+- Est. 1RM (Epley) = weight x (1 + reps/30); reps = 1 -> weight; ignore sets above 12 reps. For bodyweight exercises use bodyweight + signed load when bodyweight is known.
+- Volume = sum of weight x reps over done, non-warm-up sets (bodyweight: (bodyweight + load) x reps when known). Warm-up sets are excluded from volume, PRs and muscle load. "Sets done" counts working sets against planned working sets; warm-ups are noted separately.
+- PR types (per exercise, working sets only): Weight PR = heaviest weight in a set; Reps PR = most reps in one set at the same or heavier weight than the previous best-reps set (or most reps for reps-only/bodyweight); Est. 1RM PR; Volume PR = best total volume of that exercise in one session. Rounds PR = most rounds at the same round length. Timed PR = longest duration; distance PR = best distance or pace.
+- PR celebration timing (Settings: Instantly | After exercise (default) | At finish): a "NEW PR" badge and light haptic appear on the set row immediately in all modes; the full overlay appears at the chosen moment, queued if several. Never interrupt a running rest timer.
+- Smart target: if all working sets last time reached the top of the target rep range at RPE <= 8.5, suggest +incrementKg (default 2.5 kg / 5 lb); otherwise suggest +1 rep at the same weight. "Apply target" pre-fills set 1.
+- Calories (est.) = MET x bodyweight kg x hours. MET: Gym 5, Calisthenics 6, Martial Arts 8, Cardio 8. Default bodyweight 75 kg if unknown. Settings toggle to hide.
+- Estimated collection time (min) = sum over items of sets x (45s + restSec) / 60, rounded to 5.
+- Muscle load: a working set counts 1 on each primary muscle and 0.5 on each secondary. Weekly average sets = weighted sets in the window / (days / 7). Muscle % = weekly average / weekly target (Settings, default 14 per muscle) x 100.
+- Bands: Deficit < 60%, Maintenance 60-99%, Optimal 100-120%, Peak > 120%.
+- Region % = mean of its muscles' % (each capped at 150% for the mean). If a region is >= 100% but one of its muscles is < 60%, show an "uneven" note naming the weakest muscle (e.g. "Triceps low").
+- Balance score = muscles at >= 60% / 18 x 100.
+- Recovery per muscle = min(100, hoursSinceLastTrained / recoveryHours x 100); recoveryHours = 48, or 72 if that muscle had 8+ working sets or avg RPE >= 9 in its last session. Never trained = 100. Labels: >= 90 Primed, 70-89 Recovered, 50-69 Recovering, < 50 Fatigued. Region recovery = mean of its muscles; Overall readiness = mean of the six regions (>= 80 Optimal, 60-79 Moderate, < 60 Low). Always labeled as an estimate.
+- Session region impact (Summary): the session's weighted sets per region as a % of the weekly target for that region.
+- Auto-rebalance: for the (up to) 2 lowest regions under 100%, missing sets = (target - weekly avg) per deficit muscle, capped at 6 per region. Show e.g. "+4 sets Pull, +3 sets Posterior". "Apply" opens a preview sheet with suggested exercises (primary muscle = the deficit muscle, prefer ones the user has logged) and set counts; on confirm they are added to the next planned collection. Never change a workout silently.
+- XP: 100 per completed workout + 10 per working set + 50 per PR. XP to next level = 300 + 50 x level. Ranks: 1-4 Starter, 5-9 Regular, 10-19 Athlete, 20-29 Elite Lifter, 30+ Legend.
+- Streak: a day counts if it has a completed workout, is an unscheduled/marked rest day, or is covered by a freeze. A missed scheduled workout breaks it. One automatic freeze per week. With no schedule, the streak continues while the gap between workouts is <= 2 days.
+- Percentile claims ("Top x% of your sessions") appear only once the user has 10+ sessions; otherwise show "Session #N". For PR context use "first <exercise> PR in N days" (days since the previous PR).
+
+MUSCLE HEXAGON (shared <MuscleHexagon> component, plain SVG, no chart library)
+- 6 axes in REGION_ORDER, vertex i at angle -90 + 60 x i degrees. Radius = R x min(pct, 150) / 150. Concentric rings at 50%, 100% (dashed accent, labeled "100% target") and 150% (outer edge). Filled polygon (accent ~20% opacity, accent stroke); one dot per vertex in BAND_COLORS; label = region name + %. Keep labels inside the viewBox.
+- Props: values[6], mode (volume|recovery), compareValues? (previous period, dashed outline), size (sm|md), showLabels, onSelectRegion. Size sm uses 3-letter labels (CHE, DEL, ARM, BAC, LEG, COR) and status chips beside it. aria-label summarizes all six values and bands. Chart geometry stays LTR in RTL; label text is translated.
+- Insight line, computed: "Back and Legs are lagging below target, while Chest is peaking" (regions < 60% and > 120%); if all are 100-120%: "Well balanced".
+- Used in: Home (recovery mode, sm), Progress > Overview (md, volume | recovery toggle, "Prev" compare switch), Workout Summary (sm, session impact), Collection Detail ("Muscle coverage", sm, collapsible; uses the collection's target sets per region, no history needed).
+
+SCREEN SPECS
+LIBRARY (Exercises | Collections)
+- Search over name, muscle and equipment; a filter button opens a sheet (muscle, equipment, tracking type, logged / never logged). Category chips with live counts. Sort: Name, Recently logged, Most logged, Category.
+- "Recently logged & pinned" row: pinned first, then most recent; each card shows name, muscle - equipment, best-record chip, "2 days ago", trend arrow if improved, trophy if PR in last 14 days.
+- Rows: category strip, icon, name (2-line wrap), max 2 muscle chips + "+n", equipment, typed PR chip ("100 kg PR", "12 reps PR", "+25 kg PR", "7,500 m", "5 Rds PR"), last-logged text, overflow menu (Edit/Duplicate, Pin, Add to collection, View progress, Archive). Built-ins can't be deleted but can be pinned, annotated and duplicated.
+- Collections tab: cards with name, goal chip, exercise count, est. time, category dots ("Mixed" if several), schedule chip ("MON & THU"), last done. New collection + Import JSON.
+- Seed 80+ exercises across Gym, Calisthenics (pull-up, push-up, dip, muscle-up, handstand push-up, pistol squat, L-sit...), Martial Arts (jab-cross combo, roundhouse kick, shadow boxing, heavy-bag rounds, sparring rounds, jump rope...), Cardio (high knees, burpees, jumping jacks, mountain climbers, running, rowing...), each with equipment and primary/secondary muscles.
+
+COLLECTION DETAIL
+- Header: back arrow, collection name (tap to rename), overflow menu (rename, duplicate, delete, export JSON). Summary card: category (or Mixed + dots), exercise count, est. time, schedule chip; tiles Sets (total), Avg rest, Goal (tap to change). Collapsible Muscle coverage hexagon.
+- Actions: Add Exercise (library picker, multi-select), Reorder (toggle with up/down buttons as an accessible alternative), Share (text summary + JSON).
+- Item cards: drag handle (@dnd-kit; dragged item shows "MOVING #n" with accent border), index + name, role chip (editable), "4 sets x 8-10 reps - Rest 90s", counter "5 of 5". Tap opens a sheet to edit sets/reps/rest/role. Overflow menu: swap, duplicate, remove.
+- Sticky bottom bar: Schedule (same sheet as Calendar) and Start This Workout.
+
+ADD / EDIT EXERCISE (single header, Save disabled until valid)
+- Fields: name; category pills; equipment; primary muscle (bottom-sheet list of the 18 groups by region with a mini front/back body preview, or "No muscle target (conditioning)"); secondary muscles (up to 4, "show all", excludes the primary); tracking type cards (Weight+Reps, Bodyweight, Reps Only, Duration, Distance+Time, Rounds) with examples in the user's unit; Rounds shows round length / rest / number of rounds; collapsible Advanced (default rest, rep range, weight increment); notes & cues; video link (validate URL, open externally, never embed).
+- Tracking type is locked once the exercise has logged sets (offer "Duplicate as new exercise"). Bottom button "Save & Add to Workout" only when opened from a collection or active workout; otherwise "Save exercise". Delete becomes Archive when history exists.
+
+ACTIVE WORKOUT (follow the references)
+- Header strip: "Exercise 3 of 5", elapsed time, progress bar, "Up next". Overflow: pause/resume (paused time excluded from duration), add note, swap exercise, remove exercise, plate calculator (configurable plate set), exercise history.
+- Weight+reps: set table SET | PREVIOUS | KG/LB | REPS | RPE | DONE. Warm-ups show "W1, W2". The focused row shows +/- steppers (48px) and a "Target PR" badge when the smart target applies. Mode chips (Normal / Warm-up / Drop set / Failure) apply to the focused set. All-time PR card with est. 1RM. Estimated calories.
+- Bodyweight: toggle "+ Added weight | - Assisted band"; the stepper edits a signed load; header "LOAD (BODYWEIGHT +)".
+- Duration / distance: stopwatch or countdown; distance shows auto pace.
+- Rounds (martial arts / HIIT): Round Timer with giant countdown (Geist tabular nums), "Round 3 / 12", work/rest phase label and progress bar, "Next interval", controls Bell on/off, +10s, Pause, Skip, and an optional per-round focus note. Bell at phase start and a warning at 10s; haptics; keep awake; when backgrounded, schedule local notifications for the next phase boundaries and cancel on return. End Early asks for confirmation.
+- Rest timer after each done set (default per exercise): circular countdown, +15s / +30s / Skip, notification when backgrounded, beep and vibration at 0.
+- Autosave the ActiveSessionDraft after every change. Home shows the Resume card with Resume and Discard (confirm).
+- Finish -> PR queue -> Summary.
+
+WORKOUT SUMMARY (follow workout_summary_muscle_radar)
+- Header: close (returns to the workout), "Workout Summary" with the collection name as subtitle, trash (discard after confirmation). "Session complete" chip with "LOG #n" (sequential session number), title, date, saved place (if any).
+- Tiles: Duration (pace = duration / working sets), Volume (+/-% vs average of last 4 sessions of the same collection; hidden if none), Sets done (working sets done / planned; warm-ups noted), Milestones (PR count, "Surpassed baseline" or "Session #N").
+- Personal Records card: name, previous -> new, PR type label (Weight / Reps / Est. 1RM / Volume), % change; tap opens that exercise's progress.
+- XP row: +XP, level bar, streak status, newly unlocked badges.
+- Target Stimulation & Impact: session hexagon (sm) + ranked list of the six regions ("1. Chest +36%") with a caption on the most-trained region; an info tooltip explains the % is of the weekly target.
+- Session Effort: a tappable 10-segment control (48px tall), pre-filled from the average of set RPEs with a hint "avg of your sets", and a descriptive line per level.
+- Athlete notes, location chip (pick or add a saved place), Save & Finish, Share (native share sheet with a text summary; optional PNG card drawn on canvas, no library). Free sessions also get "Save as collection".
+- Completed sessions reopen this screen read-only from the Calendar day sheet, with Edit and Delete.
+
+PR CELEBRATION OVERLAY (follow pr_celebration_overlay)
+- Close button only. "Milestone unlocked" tag, trophy, "NEW PR!", exercise name with category chip, a 4-segment PR type row (Weight / Reps / Est. 1RM / Volume) showing the delta or "Matched" and highlighting the types achieved, previous vs new record with dates, calculated 1RM change, a context line ("First bench press PR in 42 days"), NICE! and Share Milestone. canvas-confetti with diamond/triangle/plus shapes.
+
+HOME
+- State-driven: (a) active session -> Resume card (in-progress label, elapsed, "Exercise 3 of 5 - Set 2 of 4", completed sets, volume logged, Resume + Discard); (b) workout planned today -> hero card (collection, exercise preview, est. time, Start Workout); (c) nothing planned -> rest-day card with quick actions.
+- Then: Smart overload target card (next exercise, with Apply), Physiological Readiness card (recovery hexagon sm + overall %, a hint line, chips such as "Legs Prime", "Chest 62%"; tap opens Progress > Overview), Weekly Frequency (Mon-Sun with done / rest / today / planned states and "3 of 4 days"), stat tiles (Workouts x/goal, Volume with % change, PRs this week), FAB with menu (Quick session, Add exercise, Log bodyweight). Skeleton loading state.
+
+CALENDAR (follow trainlog_unified_calendar_milestones)
+- Month grid with Completed (filled), Planned (outlined), Rest and Today states and a legend. Day sheet: Today's Target (collection + Switch), workout alert time + toggle, repeat days, Save Schedule, Start Workout, and completed sessions that open the read-only Summary. Schedule modes: Weekly or Cycle (rotating collections + rest days, e.g. "Cycle Day 3"). Level/XP card + badges below, linking to Achievements. Reminders go through NotificationService.
+
+PROGRESS
+- Exercise mode: exercise picker, 1M/3M/6M/1Y/All chips, metric chips (Weight | Est. 1RM | Reps | Volume), stat cards (est. 1RM, max weight, weekly volume), line chart with 1RM and max series and a latest-point tooltip, PR list, next-session banner (gradient + SVG, no photo).
+- Overview mode, in this order: 1) streak card + Exercise|Overview toggle (selected state = accent fill) + the 1M/3M/6M/1Y/All chips + category chips; 2) summary tiles (Total volume with % vs previous period, Sessions, Avg duration, Milestones); 3) Muscle Balance card: "x% Balanced" badge, Volume | Recovery toggle, its own 7D/30D/90D chips (weekly load needs short windows) with the date range, "Prev" compare switch, MuscleHexagon (md), insight line, six region rows (name, sets and sets/week, %, band chip, "uneven" note); 4) Anatomical Heatmap (Dual/Ant/Post), driven by the selected region, avg % per side, lagging alert and Auto-Rebalance (preview sheet); 5) Weekly tonnage bars (last 4 weeks, % change vs the first week of the period, labeled accurately); 6) Discipline distribution (share of sessions by dominant category, summing to the session count); 7) Exercise-mode preview card with an "open" button and recent record logs.
+- Heatmap: simple SVG front and back body, one named path per muscle group, filled by band; tapping a muscle pins it and shows its sets, recovery and volume. Lazy-load this screen, the hexagon and the charts.
+
+OTHER SCREENS (no reference, design from the system)
+- Body Measurements: bodyweight, chest, waist, arms, thighs + trend chart.
+- Achievements: level card (XP bar, rank) + badge grid (locked = gray with a lock). Badges: First Workout, First PR, 7-Day Streak, 30-Day Streak, 100 Sets, 10,000 kg Club, Early Bird, Calisthenics Master, Balanced Build (all six regions 100-120% for a full week), Hexagon Master (4 balanced weeks in a row).
+- More/Settings: profile name, units kg/lb, theme, language EN/AR, notifications, weekly goal, weekly sets target per muscle (default 14), PR celebration timing, calories toggle, plate set, saved places, reduce animations, export JSON/CSV, import JSON, backup reminder every 30 days, reset data (confirm).
+- Onboarding: 3 slides (name optional, weekly goal, notification explainer), empty states with simple SVG illustrations, Undo toasts, delete-confirmation dialogs.
+
+MOTION (Phase 6; animate transform and opacity only)
+- Tokens: 120/200/320/600ms; ease-out cubic-bezier(0.22,1,0.36,1); spring cubic-bezier(0.34,1.56,0.64,1).
+- Page transitions (View Transitions API with CSS fallback, mirrored in RTL), staggered list entrances (30-40ms, first ~10 items), press feedback (scale 0.97 + light haptic), count-up numbers, rings/charts drawing in, hexagon polygon scaling in from the center and interpolating on mode/period change (~300ms), springy set checkbox with an SVG check draw and a row border flash to success green, rest-timer pulse in the last 3 seconds, swipe-to-delete a set with Undo, bottom sheets that follow the finger, drag-reorder lift, PR confetti (canvas-confetti, lazy-loaded) with a bouncing "NEW PR", streak flame flicker, FAB menu fan-out, sequential heatmap fade-in, badge unlock shimmer, splash logo scale-in.
+- Respect prefers-reduced-motion AND a Settings toggle. On low-end devices (hardwareConcurrency <= 4 or deviceMemory <= 2) skip confetti and looping animations. Nothing blocks interaction; everything is interruptible.
+- Only extra libraries: canvas-confetti, @dnd-kit/core + @dnd-kit/sortable, @fontsource-variable/geist, idb (small IndexedDB wrapper), Vitest for tests.
+
+QUALITY
+- Seed data, PWA manifest + service worker (offline), code-split screens, lazy-loaded charts/heatmap/confetti, no images (SVG and icons only), accessible (aria labels on charts, visible focus, AA contrast), error boundaries, helpful empty states, confirmation before any delete.
+- Folder structure: components, screens, services, hooks, domain, data, i18n, motion. Typed models and a README covering how to run, test, and add Capacitor afterwards.
+
+Start with Phase 1 now.
