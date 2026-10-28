@@ -4,7 +4,7 @@ import {
   X, 
   Check, 
   Dumbbell, 
-  Accessibility, 
+  BicepsFlexed, 
   Repeat, 
   Timer, 
   Route, 
@@ -194,7 +194,7 @@ export const AddEditExerciseScreen: React.FC<AddEditExerciseScreenProps> = ({
       id: 'bodyweight',
       title: t.equip_bodyweight,
       subtitle: t.trackSubBodyweight,
-      icon: Accessibility
+      icon: BicepsFlexed
     },
     {
       id: 'reps',

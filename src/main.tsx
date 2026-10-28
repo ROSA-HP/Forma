@@ -5,7 +5,7 @@ import {SplashOverlay} from './components/SplashOverlay.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <>
-    <App />
     <SplashOverlay />
+    <App />
   </>
 );

@@ -8,8 +8,8 @@ import {
   TrendingUp, 
   Trophy, 
   Dumbbell, 
-  Accessibility, 
-  Swords, 
+  BicepsFlexed, 
+  Shield, 
   HeartPulse, 
   Folders, 
   Upload, 
@@ -152,9 +152,9 @@ export const LibraryScreen: React.FC = () => {
       case 'gym':
         return Dumbbell;
       case 'calisthenics':
-        return Accessibility;
+        return BicepsFlexed;
       case 'martial_arts':
-        return Swords;
+        return Shield;
       case 'cardio':
         return HeartPulse;
       default:

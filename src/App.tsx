@@ -22,6 +22,7 @@ import { ActiveWorkoutScreen } from './screens/ActiveWorkoutScreen.tsx';
 import { WorkoutSummaryScreen } from './screens/WorkoutSummaryScreen.tsx';
 import { ActiveWorkoutDock } from './components/ActiveWorkoutDock.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
+import { useBackNavigation } from './hooks/useBackNavigation.ts';
 
 function MainAppShell() {
   const { 
@@ -36,6 +37,7 @@ function MainAppShell() {
     isLoading,
     isWorkoutActive,
     isWorkoutMinimized,
+    setIsWorkoutMinimized,
     activeDraft,
     summarySession,
     setSummarySession,
@@ -51,6 +53,29 @@ function MainAppShell() {
       }
     }
   }, [settings.hasCompletedOnboarding, updateSettings]);
+
+  // Page stack depth: how many full-screen pages are open above the tab root
+  const pageDepth =
+    (activeCollectionId ? 1 : 0) +
+    (activeExerciseModal ? 1 : 0) +
+    (isWorkoutActive && !isWorkoutMinimized && activeDraft ? 1 : 0) +
+    (summarySession ? 1 : 0);
+
+  // Closes the current topmost page when the user presses back
+  const closeTopLayer = () => {
+    if (summarySession) {
+      setSummarySession(null);
+    } else if (isWorkoutActive && !isWorkoutMinimized && activeDraft) {
+      // Never kill a running session — just dock it
+      setIsWorkoutMinimized(true);
+    } else if (activeExerciseModal) {
+      setActiveExerciseModal(null);
+    } else if (activeCollectionId) {
+      setActiveCollectionId(null);
+    }
+  };
+
+  useBackNavigation(!isLoading && settings.hasCompletedOnboarding, pageDepth, closeTopLayer);
 
   if (isLoading) {
     return (

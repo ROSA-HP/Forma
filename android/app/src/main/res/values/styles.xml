@@ -17,7 +17,7 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <!-- Aspect-safe splash: solid colour + centred logo, never stretched. -->
+        <!-- Solid black launch colour only — the animated splash plays on top of it. -->
         <item name="android:background">@drawable/splash_screen</item>
         <item name="android:windowBackground">@drawable/splash_screen</item>
     </style>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Play, CheckCircle2, ChevronUp } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { formatDuration } from '../domain/sessionCalculations.ts';
@@ -25,6 +25,9 @@ export const ActiveWorkoutDock: React.FC = () => {
         : Date.now();
       const diff = Math.max(0, Math.floor((current - started - paused) / 1000));
       setElapsedSec(diff);
+
+      // Recompute every tick (always derived from Date.now())
+      const id = setInterval(updateTimer, 1000);
     };
 
     updateTimer();
@@ -37,12 +40,10 @@ export const ActiveWorkoutDock: React.FC = () => {
     };
   }, [activeDraft]);
 
-  if (!isWorkoutActive || !isWorkoutMinimized || !activeDraft) {
-    return null;
-  }
-
-  const completedSets = activeDraft.sets.filter(s => s.done).length;
-  const totalSets = activeDraft.sets.length;
+  const draft = activeDraft;
+  if (!draft) return null;
+  const completedSets = draft.sets.filter(s => s.done).length;
+  const totalSets = draft.sets.length;
 
   return (
     <div 

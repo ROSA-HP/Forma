@@ -1,25 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
 
     <!--
-      Fixes the vertically-stretched splash:
-      the old setup used the raw splash.png as the window background, and Android
-      scales raw bitmaps with "fill" gravity, so a 2:3 / 9:16 image was stretched onto
-      tall 20:9 phone screens. Now the background is a solid #0B0D10 shape (never
-      distorts, covers any area the bitmap misses) and the bitmap is drawn with
-      gravity="center", which preserves its aspect ratio on every screen size.
-      The PNGs were composited on the same #0B0D10, so edges are seamless.
+      Plain solid launch screen: Android shows only this black colour while the
+      WebView loads, then our animated splash (logo + FORMA + line) plays on the
+      same black background, then the app appears. No static logo here anymore —
+      it used to flash as "logo on black" before the animation and look broken.
+      A shape (not a bitmap) can never stretch on tall screens.
     -->
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="#0B0D10" />
-        </shape>
-    </item>
+    <solid android:color="#0B0D10" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/splash" />
-    </item>
-
-</layer-list>
+</shape>

@@ -1,20 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
-/**
- * Animated launch splash shown once per app start.
- * Purely visual: the overlay is pointer-events:none and unmounts itself,
- * so it can never block the app even if animations are interrupted.
+/** Animated launch splash shown once per app start.
+ *  The overlay stays mounted and is pointer-events:none, so its
+ *  entrance animations play on first paint without blocking the app.
  */
 export const SplashOverlay: React.FC = () => {
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setVisible(false), 1600);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  if (!visible) return null;
-
   return (
     <div className="splash-overlay" aria-hidden="true">
       <div className="splash-mark">
@@ -25,7 +15,6 @@ export const SplashOverlay: React.FC = () => {
           <span key={i} style={{ animationDelay: `${220 + i * 55}ms` }}>{ch}</span>
         ))}
       </div>
-      <div className="splash-line" />
     </div>
   );
 };

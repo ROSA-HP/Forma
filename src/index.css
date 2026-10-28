@@ -130,7 +130,7 @@ button:active {
   transform: scale(.97);
 }
 
-/* Launch splash */
+
 .splash-overlay {
   position: fixed;
   inset: 0;
@@ -147,6 +147,7 @@ button:active {
 @keyframes splash-out {
   to { opacity: 0; visibility: hidden; }
 }
+
 .splash-mark {
   position: relative;
   width: 96px;
