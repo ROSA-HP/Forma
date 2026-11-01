@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native launch-splash icon (Android 12+ SplashScreen API, and the AndroidX
+  compat splash on older versions). Android draws this 288×288 dp canvas
+  centred on the screen and only shows what falls inside a 192 dp circle.
+
+  The geometry is public/icon.svg scaled by 56/210 so the hexagon is exactly
+  112 dp tall. index.html draws the very same paths in a 288×288 px box at the
+  same spot (1 CSS px = 1 dp in the WebView), so the hand-off from this native
+  splash to the animated web splash is pixel-identical. Change both together.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path
+        android:fillColor="#C8F31D"
+        android:pathData="M144,88 L192.533,116 L192.533,172 L144,200 L95.467,172 L95.467,116 Z" />
+    <path
+        android:fillColor="#0B0D10"
+        android:pathData="M152.267,106.667 L121.333,150.667 L140.533,150.667 L134.667,183.467 L167.733,137.6 L146.133,137.6 Z" />
+</vector>

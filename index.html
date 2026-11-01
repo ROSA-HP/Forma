@@ -42,8 +42,133 @@
       }
     }
     </script>
+
+    <!--
+      Launch splash. Lives here (not in React) so it is on the very first painted
+      frame, before any JavaScript bundle loads. Its first frame is identical to
+      the Android native splash (android/app/src/main/res/drawable/splash_icon.xml):
+      same paths, 288×288 box, centred on the screen. MainActivity calls
+      formaSplashAlign() with the WebView's offset from the screen centre, removes
+      the native splash, then calls formaSplashPlay() to animate from that frame.
+    -->
+    <style>
+      #forma-splash {
+        --dx: 0px;
+        --dy: 0px;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        background: #0B0D10;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      #forma-splash .fs-mark {
+        position: absolute;
+        left: calc(50% + var(--dx));
+        top: calc(50% + var(--dy));
+        width: 288px;
+        height: 288px;
+        margin: -144px 0 0 -144px;
+      }
+      #forma-splash .fs-logo,
+      #forma-splash .fs-halo {
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      #forma-splash .fs-halo { opacity: 0; }
+      #forma-splash .fs-word {
+        position: absolute;
+        left: calc(50% + var(--dx));
+        top: calc(50% + var(--dy) + 80px);
+        transform: translateX(-50%);
+        display: flex;
+        font: 800 13px/1 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        letter-spacing: .38em;
+        text-indent: .38em;
+        color: #F2F4F7;
+      }
+      #forma-splash .fs-word span { opacity: 0; }
+      #forma-splash .fs-line {
+        position: absolute;
+        left: calc(50% + var(--dx) - 66px);
+        top: calc(50% + var(--dy) + 108px);
+        width: 132px;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #C8F31D, transparent);
+        transform: scaleX(0);
+      }
+
+      /* Everything below only starts once .fs-play is set, so frame 0 == native frame */
+      #forma-splash.fs-play { animation: fs-out .4s ease 1.25s forwards; }
+      #forma-splash.fs-play .fs-logo { animation: fs-pulse .55s cubic-bezier(.3, .7, .3, 1) both; }
+      #forma-splash.fs-play .fs-halo { animation: fs-halo 1s ease-out .1s both; }
+      #forma-splash.fs-play .fs-word span { animation: fs-letter .4s ease both; }
+      #forma-splash.fs-play .fs-line { animation: fs-sweep .65s cubic-bezier(.4, 0, .2, 1) .45s both; }
+
+      @keyframes fs-pulse {
+        0% { transform: scale(1); }
+        45% { transform: scale(1.07); }
+        100% { transform: scale(1); }
+      }
+      @keyframes fs-halo {
+        0% { transform: scale(1); opacity: .55; }
+        100% { transform: scale(1.9); opacity: 0; }
+      }
+      @keyframes fs-letter {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes fs-sweep { to { transform: scaleX(1); } }
+      @keyframes fs-out { to { opacity: 0; visibility: hidden; } }
+
+      @media (prefers-reduced-motion: reduce) {
+        #forma-splash.fs-play { animation: fs-out .2s ease forwards; }
+        #forma-splash.fs-play * { animation: none !important; }
+      }
+    </style>
   </head>
   <body class="bg-app-bg text-app-primary">
+    <div id="forma-splash" aria-hidden="true">
+      <svg class="fs-mark" viewBox="0 0 288 288" width="288" height="288">
+        <circle class="fs-halo" cx="144" cy="144" r="60" fill="none" stroke="#C8F31D" stroke-width="2" />
+        <g class="fs-logo">
+          <path fill="#C8F31D" d="M144,88 L192.533,116 L192.533,172 L144,200 L95.467,172 L95.467,116 Z" />
+          <path fill="#0B0D10" d="M152.267,106.667 L121.333,150.667 L140.533,150.667 L134.667,183.467 L167.733,137.6 L146.133,137.6 Z" />
+        </g>
+      </svg>
+      <div class="fs-word">
+        <span style="animation-delay:.22s">F</span><span style="animation-delay:.275s">O</span><span style="animation-delay:.33s">R</span><span style="animation-delay:.385s">M</span><span style="animation-delay:.44s">A</span>
+      </div>
+      <div class="fs-line"></div>
+    </div>
+    <script>
+      (function () {
+        var el = document.getElementById('forma-splash');
+        var played = false;
+        function remove() {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }
+        window.formaSplashAlign = function (dx, dy) {
+          el.style.setProperty('--dx', dx + 'px');
+          el.style.setProperty('--dy', dy + 'px');
+        };
+        window.formaSplashPlay = function () {
+          if (played) return;
+          played = true;
+          el.addEventListener('animationend', function (e) {
+            if (e.target === el) remove();
+          });
+          el.classList.add('fs-play');
+          setTimeout(remove, 2500); // never linger if animations are paused
+        };
+        var cap = window.Capacitor;
+        var isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
+        // On Android the native splash calls formaSplashPlay() when it hands over;
+        // in a browser there is no native splash, so play straight away.
+        if (isNative) setTimeout(window.formaSplashPlay, 3500);
+        else window.formaSplashPlay();
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>

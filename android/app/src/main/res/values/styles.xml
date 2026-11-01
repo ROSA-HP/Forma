@@ -13,12 +13,22 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Brand black behind the WebView, so no white DayNight window can flash
+             between the native splash and the first web frame. -->
+        <item name="android:windowBackground">@drawable/splash_screen</item>
     </style>
 
 
+    <!--
+      Launch theme. MainActivity installs the AndroidX SplashScreen with it, so
+      every Android version shows the same thing: @drawable/splash_icon centred
+      on brand black. The animated web splash in index.html starts from that
+      exact frame (same paths, same size, same centre) and animates from there.
+    -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <!-- Solid black launch colour only — the animated splash plays on top of it. -->
-        <item name="android:background">@drawable/splash_screen</item>
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:windowBackground">@drawable/splash_screen</item>
     </style>
 </resources>

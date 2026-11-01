@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.1 — 2026-11-01
+
+### Seamless launch on Android
+- The native launch screen and the animated splash now start from the **same frame**: the same logo,
+  the same 112 dp size, centred on the same point. The handoff is invisible, and the animation
+  (pulse, expanding ring, F-O-R-M-A letters, sweep line) plays from exactly where the logo already is.
+- No more blank frame between the two: the splash is now static markup in `index.html`, so it paints
+  before any JavaScript loads, and Android keeps its splash up until that frame has been drawn
+  (3-second safety limit).
+- The web logo is shifted by the WebView's measured offset from the screen centre, so the two line up
+  even on Android 12–14 where the app area sits below the status bar.
+- The window behind the app is brand black (no white flash), and the WebView background is black
+  while the page loads.
+
 ## v1.1.0 — 2026-11-01
 
 ### Design
