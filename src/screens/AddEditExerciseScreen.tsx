@@ -305,18 +305,18 @@ export const AddEditExerciseScreen: React.FC<AddEditExerciseScreenProps> = ({
                   type="button"
                   onClick={() => setCategory(cat)}
                   style={{
-                    borderInlineStartColor: color,
-                    borderInlineStartWidth: '3px',
+                    backgroundColor: isSelected ? `${color}1f` : undefined,
                     borderColor: isSelected ? color : undefined,
-                    backgroundColor: isSelected ? `${color}25` : undefined
+                    borderInlineStartColor: color,
+                    borderInlineStartWidth: '3px'
                   }}
                   className={`h-11 px-3.5 rounded-lg border text-xs font-bold capitalize flex items-center gap-2 transition-all ${
                     isSelected
-                      ? 'bg-app-surface text-app-primary'
+                      ? 'text-app-primary'
                       : 'bg-app-surface border-app text-app-muted hover:text-app-primary'
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                   <span>{t[cat as keyof typeof t] || cat}</span>
                 </button>
               );

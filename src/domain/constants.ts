@@ -42,18 +42,18 @@ export const REGION_MUSCLES: Record<Region, MuscleGroup[]> = {
 export const HEATMAP_EXTRA_MUSCLES: MuscleGroup[] = ['forearms', 'adductors', 'hip_flexors'];
 
 export const CATEGORY_COLORS: Record<ExerciseCategory, string> = {
-  gym: '#60A5FA',
-  calisthenics: '#A78BFA',
-  martial_arts: '#FB7185',
-  cardio: '#FBBF24',
-  custom: '#2DD4BF'
+  gym: '#5B8DEF',
+  calisthenics: '#E0A83C',
+  martial_arts: '#7A4EE8',
+  cardio: '#32B86B',
+  custom: '#D65FD2'
 };
 
 export const BAND_COLORS: Record<MuscleBand, string> = {
-  deficit: '#F87171',
-  maintenance: '#60A5FA',
-  optimal: '#C8F31D',
-  peak: '#FBBF24'
+  deficit: '#E85D5D',
+  maintenance: '#5B8DEF',
+  optimal: '#8FE34A',
+  peak: '#E0A83C'
 };
 
 export const FUNCTIONAL_COLORS = {

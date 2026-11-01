@@ -29,14 +29,15 @@ import {
   filterSessionsByDiscipline 
 } from '../domain/analyticsCalculations.ts';
 import { calculateStreak, calculateXP } from '../domain/calculations.ts';
+import { CATEGORY_COLORS } from '../domain/constants.ts';
 
-const DISCIPLINE_CONFIG: Record<ExerciseCategory, { color: string; bg: string; border: string }> = {
-  gym: { color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.4)' },
-  calisthenics: { color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.4)' },
-  martial_arts: { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)' },
-  cardio: { color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)' },
-  custom: { color: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.4)' }
-};
+// Derived from the shared category palette so the calendar never drifts from the rest of the app
+const DISCIPLINE_CONFIG = Object.fromEntries(
+  (Object.keys(CATEGORY_COLORS) as ExerciseCategory[]).map(cat => {
+    const color = CATEGORY_COLORS[cat];
+    return [cat, { color, bg: `${color}26`, border: `${color}66` }];
+  })
+) as Record<ExerciseCategory, { color: string; bg: string; border: string }>;
 
 export const CalendarScreen: React.FC = () => {
   const { sessions, schedules, collections, exercises, deleteSession, repeatSession, startWorkout, settings, t } = useApp();
@@ -53,7 +54,7 @@ export const CalendarScreen: React.FC = () => {
   }, [exercises]);
 
   const DISCIPLINE_LABELS: Record<ExerciseCategory, string> = {
-    gym: t.discWeightlifting,
+    gym: t.gym,
     calisthenics: t.calisthenics,
     martial_arts: t.martial_arts,
     cardio: t.cardio,
@@ -218,7 +219,7 @@ export const CalendarScreen: React.FC = () => {
               }`}
               style={
                 isActive
-                  ? { backgroundColor: cfg.color, color: '#090d16' }
+                  ? { backgroundColor: cfg.color, color: '#FFFFFF' }
                   : undefined
               }
             >
@@ -307,7 +308,7 @@ export const CalendarScreen: React.FC = () => {
                     <span
                       key={cat}
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: DISCIPLINE_CONFIG[cat]?.color || '#38bdf8' }}
+                      style={{ backgroundColor: DISCIPLINE_CONFIG[cat]?.color || CATEGORY_COLORS.gym }}
                     />
                   ))}
                   {disciplines.length > 3 && (
@@ -320,25 +321,13 @@ export const CalendarScreen: React.FC = () => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-between pt-2 border-t border-app text-[11px] text-app-muted">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#38bdf8]" />
-              Gym
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-2 border-t border-app/60 text-[11px] text-app-muted">
+          {(['gym', 'calisthenics', 'martial_arts', 'cardio'] as ExerciseCategory[]).map(cat => (
+            <span key={cat} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DISCIPLINE_CONFIG[cat].color }} />
+              {DISCIPLINE_LABELS[cat]}
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-              Calisthenics
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-              Martial Arts
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-              Cardio
-            </span>
-          </div>
+          ))}
         </div>
       </section>
 
@@ -395,7 +384,7 @@ export const CalendarScreen: React.FC = () => {
                   completedSetsCount++;
                   const load = set.loadKg || 0;
                   const reps = set.reps || 0;
-                  if (load > 0 && reps > 0) totalVolumeKg += load * reps;
+                  if (set.tag !== 'warmup' && load > 0 && reps > 0) totalVolumeKg += load * reps;
                 }
                 const ex = exercisesMap.get(set.exerciseId);
                 if (ex) {

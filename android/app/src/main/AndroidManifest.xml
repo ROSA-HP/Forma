@@ -38,4 +38,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required for set/PR/timer haptics (navigator.vibrate) inside the WebView -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

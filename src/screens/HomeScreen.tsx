@@ -12,13 +12,32 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { MuscleHexagon } from '../components/MuscleHexagon.tsx';
-import { calculateRecovery, formatWeight } from '../domain/calculations.ts';
+import { CategoryChip } from '../components/CategoryChip.tsx';
+import { calculateRecovery, estimateMinutes, kgToLb } from '../domain/calculations.ts';
+import { buildLastTrainedMap, calculateHomeWeekSummary } from '../domain/homeCalculations.ts';
+import { REGION_ORDER } from '../domain/constants.ts';
+import { Region } from '../types/index.ts';
+
+// Readiness colour per region: fresh → ready → recovering → fatigued
+function readinessColor(pct: number): string {
+  if (pct >= 90) return '#32B86B';
+  if (pct >= 70) return '#5B8DEF';
+  if (pct >= 50) return '#E0A83C';
+  return '#E85D5D';
+}
+
+function formatCompact(value: number): string {
+  if (value >= 10_000) return `${(value / 1000).toFixed(0)}k`;
+  if (value >= 1_000) return `${(value / 1000).toFixed(1)}k`;
+  return String(Math.round(value));
+}
 
 export const HomeScreen: React.FC = () => {
-  const { 
-    settings, 
-    sessions, 
-    collections, 
+  const {
+    settings,
+    sessions,
+    exercises,
+    collections,
     activeDraft, 
     pendingAlert, 
     dismissAlert, 
@@ -33,14 +52,31 @@ export const HomeScreen: React.FC = () => {
 
   const primaryCollection = collections[0] || null;
 
-  // Calculate live readiness from recent sessions
-  const readiness = React.useMemo(() => {
-    return calculateRecovery({
-      chest: { hours: 24, heavy: false },
-      quads: { hours: 48, heavy: false },
-      lats: { hours: 36, heavy: true }
-    });
-  }, []);
+  const exercisesMap = React.useMemo(() => new Map(exercises.map(e => [e.id, e])), [exercises]);
+
+  // Live readiness from the athlete's real recent sessions
+  const readiness = React.useMemo(
+    () => calculateRecovery(buildLastTrainedMap(sessions, exercises)),
+    [sessions, exercises]
+  );
+
+  // Regions sorted most-fatigued first, for the readiness chips
+  const regionsByReadiness = React.useMemo(
+    () => [...REGION_ORDER].sort((a, b) => readiness.regions[a] - readiness.regions[b]),
+    [readiness]
+  );
+  const recoveringRegions = regionsByReadiness.filter(r => readiness.regions[r] < 90);
+  const regionLabel = (r: Region) => t[`region_${r}` as keyof typeof t] as string;
+
+  const week = React.useMemo(
+    () => calculateHomeWeekSummary(sessions, exercises, new Date(), settings.userBodyweightKg),
+    [sessions, exercises, settings.userBodyweightKg]
+  );
+  const weekVolume = settings.weightUnit === 'lb' ? kgToLb(week.volumeKg) : week.volumeKg;
+
+  const primaryCategory = primaryCollection
+    ? exercisesMap.get(primaryCollection.items[0]?.exerciseId)?.category
+    : undefined;
 
   return (
     <div className="flex flex-col w-full px-4 pt-20 pb-28 max-w-xl mx-auto space-y-4">
@@ -133,11 +169,15 @@ export const HomeScreen: React.FC = () => {
       ) : primaryCollection ? (
         <section className="w-full rounded-xl bg-app-surface border border-app p-4 flex flex-col gap-3 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 font-semibold text-xs uppercase tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-              <span>{t.gym} · Hypertrophy</span>
+            <div className="flex items-center gap-2 min-w-0">
+              {primaryCategory && <CategoryChip category={primaryCategory} className="pointer-events-none" />}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted truncate">
+                {primaryCollection.goal}
+              </span>
+            </div>
+            <span className="text-xs text-app-muted tabular-nums shrink-0">
+              ~{estimateMinutes(primaryCollection.items)} min
             </span>
-            <span className="text-xs text-app-muted tabular-nums">{t.approxDuration}</span>
           </div>
 
           <div>
@@ -153,7 +193,7 @@ export const HomeScreen: React.FC = () => {
             {primaryCollection.items.slice(0, 3).map((item, idx) => (
               <div key={idx} className="flex justify-between items-center text-app-muted">
                 <span className="text-app-primary font-medium truncate max-w-[200px]">
-                  {idx + 1}. {item.exerciseId.replace(/-/g, ' ')}
+                  {idx + 1}. {exercisesMap.get(item.exerciseId)?.name ?? item.exerciseId.replace(/-/g, ' ')}
                 </span>
                 <span className="tabular-nums">{item.sets} {t.sets.toLowerCase()}</span>
               </div>
@@ -189,8 +229,8 @@ export const HomeScreen: React.FC = () => {
               {t.physiologicalReadiness}
             </span>
           </div>
-          <span className="px-2 py-0.5 rounded font-bold text-xs bg-app-surface-2 border border-app text-app-accent tabular-nums">
-            {readiness.overallReadiness}% {t.optimal}
+          <span className="shrink-0 whitespace-nowrap px-2 py-0.5 rounded font-bold text-xs bg-app-accent/15 border border-app-accent/40 text-app-accent tabular-nums">
+            {readiness.overallReadiness}% {t.readiness}
           </span>
         </div>
 
@@ -205,18 +245,23 @@ export const HomeScreen: React.FC = () => {
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <p className="text-xs text-app-muted leading-relaxed">
-              {t.muscle_legs} &amp; {t.muscle_lats} {t.optimal.toLowerCase()}. {t.muscle_chest} {t.recovery.toLowerCase()}.
+              {recoveringRegions.length === 0
+                ? t.readinessAllFresh
+                : t.readinessRecovering.replace('{regions}', recoveringRegions.map(regionLabel).join(', '))}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-app-surface-2 border-s-2 border-s-emerald-400 border border-app text-app-primary">
-                {t.muscle_legs} 100%
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-app-surface-2 border-s-2 border-s-app-accent border border-app text-app-primary">
-                {t.muscle_lats} 100%
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-app-surface-2 border-s-2 border-s-red-400 border border-app text-red-400">
-                {t.muscle_chest} 50%
-              </span>
+              {regionsByReadiness.slice(0, 3).map(region => {
+                const pct = readiness.regions[region];
+                return (
+                  <span
+                    key={region}
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-app-surface-2 border border-app border-s-2 text-app-primary tabular-nums"
+                    style={{ borderInlineStartColor: readinessColor(pct) }}
+                  >
+                    {regionLabel(region)} {pct}%
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -229,24 +274,23 @@ export const HomeScreen: React.FC = () => {
             {t.weeklyFrequency}
           </span>
           <span className="text-xs font-bold text-app-accent tabular-nums uppercase">
-            3 {t.of} {settings.weeklyGoalDays} {t.days}
+            {week.trainedDays} {t.of} {settings.weeklyGoalDays} {t.days}
           </span>
         </div>
 
         <div className="grid grid-cols-7 gap-1">
           {[t.dayMon, t.dayTue, t.dayWed, t.dayThu, t.dayFri, t.daySat, t.daySun].map((day, idx) => {
-            const isCompleted = idx === 0 || idx === 1 || idx === 3;
-            const isToday = idx === 4;
+            const { trained: isCompleted, isToday } = week.days[idx];
 
             return (
               <div
                 key={idx}
                 className={`flex flex-col items-center py-2 rounded-lg border text-xs font-semibold ${
-                  isToday
+                  isCompleted
+                    ? `bg-app-accent/15 text-app-primary ${isToday ? 'border-app-accent' : 'border-app-accent/40'}`
+                    : isToday
                     ? 'border-app-accent bg-app-surface-2 text-app-accent'
-                    : isCompleted
-                    ? 'border-app bg-app-surface-2 text-app-primary'
-                    : 'border-app/40 bg-app-surface text-app-muted/50'
+                    : 'border-app/40 bg-app-surface text-app-muted/60'
                 }`}
               >
                 <span className="truncate max-w-[28px] text-[10px]">{day.substring(0, 3)}</span>
@@ -267,17 +311,23 @@ export const HomeScreen: React.FC = () => {
       <section className="grid grid-cols-3 gap-2">
         <div className="p-3 rounded-xl bg-app-surface border border-app flex flex-col justify-between">
           <span className="text-[11px] font-semibold text-app-muted uppercase">{t.workouts}</span>
-          <div className="text-lg font-bold text-app-primary tabular-nums mt-1">3 / 4</div>
-          <span className="text-[10px] text-app-accent font-medium mt-0.5">{t.onTarget}</span>
+          <div className="text-lg font-bold text-app-primary tabular-nums mt-1">
+            {week.trainedDays} / {settings.weeklyGoalDays}
+          </div>
+          <span className={`text-[10px] font-medium mt-0.5 ${week.trainedDays >= settings.weeklyGoalDays ? 'text-app-accent' : 'text-app-muted'}`}>
+            {week.trainedDays >= settings.weeklyGoalDays ? t.onTarget : `${week.sessionCount} ${t.sessionPlural.toLowerCase()}`}
+          </span>
         </div>
         <div className="p-3 rounded-xl bg-app-surface border border-app flex flex-col justify-between">
           <span className="text-[11px] font-semibold text-app-muted uppercase">{t.volume}</span>
-          <div className="text-lg font-bold text-app-primary tabular-nums mt-1">18.4k</div>
-          <span className="text-[10px] text-app-muted mt-0.5">{t.kgLifted}</span>
+          <div className="text-lg font-bold text-app-primary tabular-nums mt-1">{formatCompact(weekVolume)}</div>
+          <span className="text-[10px] text-app-muted mt-0.5">{settings.weightUnit === 'lb' ? t.lbLifted : t.kgLifted}</span>
         </div>
         <div className="p-3 rounded-xl bg-app-surface border border-app flex flex-col justify-between">
           <span className="text-[11px] font-semibold text-app-muted uppercase">{t.milestones}</span>
-          <div className="text-lg font-bold text-app-accent tabular-nums mt-1">2 {t.newPR}</div>
+          <div className={`text-lg font-bold tabular-nums mt-1 ${week.prCount > 0 ? 'text-app-accent' : 'text-app-primary'}`}>
+            {week.prCount} {t.newPR}
+          </div>
           <span className="text-[10px] text-app-muted mt-0.5">{t.thisWeek}</span>
         </div>
       </section>

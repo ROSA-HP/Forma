@@ -103,6 +103,10 @@ export function detectPRs(
     }
   }
 
+  // The first time an exercise is ever logged sets the baseline; there is
+  // nothing to beat yet, so no record of any kind is reported.
+  if (pastSets.length === 0) return [];
+
   // 1. Weight PR
   if (exercise.trackingType === 'weight_reps' || exercise.trackingType === 'bodyweight') {
     let prevMaxWeight = 0;
@@ -379,16 +383,17 @@ export function muscleLoad(
   sessions: Session[],
   windowDays: number,
   exercisesMap: Map<string, Exercise>,
-  weeklyTarget: number = 14
+  weeklyTarget: number = 14,
+  referenceTimeMs: number = Date.now()
 ): Record<MuscleGroup, { sets: number; weeklyAvg: number; pct: number; band: MuscleBand }> {
-  const result: Record<MuscleGroup, { sets: number; weeklyAvg: number; pct: number; band: MuscleBand }> = 
+  const result: Record<MuscleGroup, { sets: number; weeklyAvg: number; pct: number; band: MuscleBand }> =
     {} as any;
 
   for (const m of MUSCLE_GROUPS) {
     result[m] = { sets: 0, weeklyAvg: 0, pct: 0, band: 'deficit' };
   }
 
-  const now = Date.now();
+  const now = referenceTimeMs;
   const windowMs = windowDays * 24 * 60 * 60 * 1000;
 
   for (const session of sessions) {
@@ -474,7 +479,7 @@ export function calculateBalanceScore(
       optimalOrMaintCount++;
     }
   }
-  return Math.round((optimalOrMaintCount / 18) * 100);
+  return Math.round((optimalOrMaintCount / MUSCLE_GROUPS.length) * 100);
 }
 
 /**
@@ -616,12 +621,18 @@ export function calculateStreak(
 
   // Session dates bucketed by LOCAL calendar day
   const sessionDates = new Set<string>();
+  let earliestKey = '9999-12-31';
   for (const s of sessions) {
-    sessionDates.add(localDayKey(new Date(s.startedAt)));
+    const key = localDayKey(new Date(s.startedAt));
+    sessionDates.add(key);
+    if (key < earliestKey) earliestKey = key;
   }
 
   const ref = new Date(referenceDate);
   ref.setHours(0, 0, 0, 0);
+  // Walk back to the first ever session (no arbitrary cap on long streaks)
+  const earliest = new Date(`${earliestKey}T00:00:00`);
+  const maxDays = Math.max(0, Math.round((ref.getTime() - earliest.getTime()) / 86_400_000)) + 1;
 
   const hasSchedule = schedules.some(sc => sc.days.length > 0);
   let streak = 0;
@@ -631,7 +642,7 @@ export function calculateStreak(
   let freezesUsedThisWeek = 0;
 
   // Walk backwards day by day from today
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < maxDays; i++) {
     const checkDate = new Date(ref);
     checkDate.setDate(checkDate.getDate() - i);
     const dateStr = localDayKey(checkDate);
@@ -753,12 +764,21 @@ export function formatRegionName(region: Region): string {
 /**
  * Weight unit conversion utilities
  */
+// Exact international definition: 1 lb = 0.45359237 kg
+const KG_PER_LB = 0.45359237;
+
+/** Display conversion, rounded to 0.1 lb. */
 export function kgToLb(kg: number): number {
-  return Math.round(kg * 2.20462 * 10) / 10;
+  return Math.round((kg / KG_PER_LB) * 10) / 10;
 }
 
+/**
+ * Storage conversion. Kept at gram precision (not 0.1 kg) so a value typed in
+ * pounds survives the kg round-trip: 225 lb → 102.058 kg → 225.0 lb, whereas
+ * rounding to 102.1 kg would drift to 225.1 lb and compound on every step.
+ */
 export function lbToKg(lb: number): number {
-  return Math.round((lb / 2.20462) * 10) / 10;
+  return Math.round(lb * KG_PER_LB * 1000) / 1000;
 }
 
 export function formatWeight(kg: number, unit: 'kg' | 'lb' = 'kg'): string {

@@ -87,8 +87,11 @@ export function calculateSessionSummary(
 
   // PRs detection
   const prsAchieved: PRRecord[] = [];
-  // Exclude current session from history for PR evaluation
-  const priorHistory = historySessions.filter(h => h.id !== session.id);
+  // Only sessions that happened BEFORE this one count as history, so a past
+  // session's summary is not judged against workouts logged after it
+  const priorHistory = historySessions.filter(
+    h => h.id !== session.id && h.startedAt < session.startedAt
+  );
 
   // Group sets by exercise
   const exSetsMap = new Map<string, SetEntry[]>();
@@ -109,7 +112,8 @@ export function calculateSessionSummary(
   const xpEarned = 100 + (workingSets * 10) + (prsAchieved.length * 50);
 
   // Muscle load & regional distribution
-  const mLoad = muscleLoad([session], 7, exMap, 14);
+  // Window anchored at the session itself so older sessions still show their load
+  const mLoad = muscleLoad([session], 7, exMap, 14, ended);
   const regionDist = regionValues(mLoad);
 
   // Determine dominant category

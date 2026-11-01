@@ -327,7 +327,44 @@ test('estimateCalories and estimateMinutes utilities', () => {
   assert.equal(min, 15);
 });
 
-test('unit conversion: kgToLb and lbToKg', () => {
+test('unit conversion: kgToLb and lbToKg use the exact 0.45359237 kg/lb factor', () => {
   assert.equal(kgToLb(100), 220.5);
-  assert.equal(lbToKg(220.5), 100);
+  assert.equal(lbToKg(220.5), 100.017);
+  assert.equal(lbToKg(100), 45.359);
+});
+
+test('unit conversion: pound values survive the kg storage round-trip without drift', () => {
+  for (const lb of [2.5, 45, 135, 185, 225, 315, 405, 500]) {
+    assert.equal(kgToLb(lbToKg(lb)), lb);
+  }
+  // Repeated +5 lb steps (as the workout stepper does) never accumulate error
+  let storedKg = lbToKg(135);
+  for (let i = 0; i < 40; i++) {
+    storedKg = lbToKg(kgToLb(storedKg) + 5);
+  }
+  assert.equal(kgToLb(storedKg), 335);
+});
+
+test('detectPRs: the first time an exercise is logged is a baseline, not a PR', () => {
+  const ex: Exercise = {
+    id: 'new-lift', name: 'New Lift', category: 'gym', equipment: 'barbell',
+    primaryMuscles: ['chest'], secondaryMuscles: [], trackingType: 'weight_reps',
+    defaultRestSec: 90, incrementKg: 2.5, source: 'builtin'
+  };
+  const sets: SetEntry[] = [{ id: 'n1', exerciseId: 'new-lift', loadKg: 60, reps: 8, tag: 'normal', done: true }];
+  assert.deepEqual(detectPRs(ex, sets, []), []);
+});
+
+test('calculateStreak: long streaks are not capped at 90 days', () => {
+  const today = new Date(2026, 9, 31, 12, 0, 0);
+  const sessions: Session[] = [];
+  for (let i = 1; i <= 120; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    sessions.push({
+      id: `d${i}`, number: i, startedAt: d.toISOString(), endedAt: d.toISOString(),
+      pausedMs: 0, xpGained: 0, sets: []
+    });
+  }
+  assert.equal(calculateStreak(sessions, [], today).currentStreak, 120);
 });

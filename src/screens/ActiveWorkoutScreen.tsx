@@ -38,6 +38,7 @@ export const ActiveWorkoutScreen: React.FC = () => {
     setIsWorkoutMinimized, 
     exercises, 
     sessions, 
+    collections,
     locations, 
     settings,
     restTimer,
@@ -99,12 +100,6 @@ export const ActiveWorkoutScreen: React.FC = () => {
     };
   }, [activeDraft]);
 
-  if (!activeDraft) {
-    return null;
-  }
-
-  const isLb = settings.weightUnit === 'lb';
-
   // Map of exerciseId -> Exercise object
   const exMap = useMemo(() => {
     const map = new Map<string, Exercise>();
@@ -115,13 +110,29 @@ export const ActiveWorkoutScreen: React.FC = () => {
   // Group activeDraft sets by exercise
   const exerciseSetsMap = useMemo(() => {
     const map = new Map<string, SetEntry[]>();
-    for (const s of activeDraft.sets) {
+    for (const s of activeDraft?.sets ?? []) {
       const list = map.get(s.exerciseId) || [];
       list.push(s);
       map.set(s.exerciseId, list);
     }
     return map;
-  }, [activeDraft.sets]);
+  }, [activeDraft?.sets]);
+
+  // Hooks above must run on every render; bail out only after them
+  if (!activeDraft) {
+    return null;
+  }
+
+  const isLb = settings.weightUnit === 'lb';
+
+  // Rest prescribed for an exercise: the routine's per-item rest, else the exercise default
+  const getRestSeconds = (ex: Exercise): number => {
+    const routine = activeDraft.collectionId
+      ? collections.find(c => c.id === activeDraft.collectionId)
+      : undefined;
+    const item = routine?.items.find(i => i.exerciseId === ex.id);
+    return item?.restSec || ex.defaultRestSec || (ex.category === 'gym' ? 90 : 60);
+  };
 
   // Get past history for an exercise
   const getPastSetsForExercise = (exerciseId: string): SetEntry[] => {
@@ -152,16 +163,29 @@ export const ActiveWorkoutScreen: React.FC = () => {
     await updateDraft(d => ({ ...d, sets: updatedSets }));
 
     if (nextDone) {
-      // Check for PR
-      const exSets = updatedSets.filter(s => s.exerciseId === ex.id);
-      const prs = detectPRs(ex, exSets, sessions, settings.userBodyweightKg);
-      if (prs.length > 0) {
-        triggerPRCelebration(prs[0]);
+      // Celebrate only records that THIS set created or improved — earlier sets
+      // of the same exercise already celebrated theirs.
+      const prsBefore = detectPRs(
+        ex,
+        activeDraft.sets.filter(s => s.exerciseId === ex.id),
+        sessions,
+        settings.userBodyweightKg
+      );
+      const prsAfter = detectPRs(
+        ex,
+        updatedSets.filter(s => s.exerciseId === ex.id),
+        sessions,
+        settings.userBodyweightKg
+      );
+      const newPR = prsAfter.find(after => {
+        const before = prsBefore.find(b => b.prType === after.prType);
+        return !before || after.newValue > before.newValue;
+      });
+      if (newPR) {
+        triggerPRCelebration(newPR);
       }
 
-      // Automatically launch Rest Timer (default 90s, or 120s for heavy compound)
-      const restDuration = ex.category === 'gym' ? 90 : 60;
-      startRestTimer(restDuration, ex.name);
+      startRestTimer(getRestSeconds(ex), ex.name);
     }
   };
 
@@ -448,7 +472,7 @@ export const ActiveWorkoutScreen: React.FC = () => {
                       {exSets.map((s, sIdx) => {
                         const est1RM = s.loadKg && s.reps ? epley1RM(s.loadKg, s.reps, ex.trackingType === 'bodyweight', settings.userBodyweightKg) : 0;
                         const weightDisplay = s.loadKg !== undefined 
-                          ? (isLb ? kgToLb(s.loadKg).toFixed(1) : s.loadKg)
+                          ? (isLb ? kgToLb(s.loadKg) : s.loadKg)
                           : '—';
 
                         return (

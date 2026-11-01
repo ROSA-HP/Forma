@@ -40,6 +40,7 @@ export const PRCelebrationModal: React.FC<PRCelebrationModalProps> = ({
       case 'volume': return t.prTotalVolume;
       case 'rounds': return t.prMaxRounds;
       case 'timed': return t.prEnduranceHold;
+      case 'distance': return t.prMaxDistance;
       default: return t.prAchieved;
     }
   };

@@ -162,8 +162,9 @@ export const ProgressScreen: React.FC = () => {
     let vol = 0;
     for (const session of sessions) {
       for (const set of session.sets) {
-        if (set.done && set.loadKg && set.reps) {
-          vol += set.loadKg * set.reps;
+        // Working sets with external load only (no warm-ups, no negative assisted loads)
+        if (set.done && set.tag !== 'warmup' && (set.loadKg ?? 0) > 0 && (set.reps ?? 0) > 0) {
+          vol += set.loadKg! * set.reps!;
         }
       }
     }

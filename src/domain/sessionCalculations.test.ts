@@ -78,3 +78,29 @@ test('buildInitialDraftSets: generates sets from collection items', () => {
   assert.equal(result.sets[1].tag, 'normal');
   assert.equal(result.sets[2].tag, 'normal');
 });
+
+test('calculateSessionSummary: an old session still shows its own muscle load', () => {
+  const oldSession: Session = {
+    id: 'old',
+    number: 1,
+    startedAt: '2025-01-10T10:00:00Z',
+    endedAt: '2025-01-10T11:00:00Z',
+    pausedMs: 0,
+    xpGained: 0,
+    sets: [{ id: 'o1', exerciseId: 'bench-press', loadKg: 80, reps: 8, tag: 'normal', done: true }]
+  };
+  const summary = calculateSessionSummary(oldSession, [mockExercise], 75, [oldSession]);
+  assert.ok(summary.regionDistribution.chest.pct > 0);
+});
+
+test('calculateSessionSummary: PRs are judged only against sessions before it', () => {
+  const mk = (id: string, start: string, load: number): Session => ({
+    id, number: 1, startedAt: start, endedAt: start, pausedMs: 0, xpGained: 0,
+    sets: [{ id: `${id}-1`, exerciseId: 'bench-press', loadKg: load, reps: 5, tag: 'normal', done: true }]
+  });
+  const first = mk('a', '2026-01-01T10:00:00Z', 80);
+  const second = mk('b', '2026-01-08T10:00:00Z', 90);
+  const later = mk('c', '2026-01-15T10:00:00Z', 120);
+  const summary = calculateSessionSummary(second, [mockExercise], 75, [first, second, later]);
+  assert.ok(summary.prsAchieved.some(pr => pr.prType === 'weight' && pr.newValue === 90));
+});

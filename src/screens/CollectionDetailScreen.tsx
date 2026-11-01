@@ -305,7 +305,7 @@ export const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
                 style={{
                   backgroundColor: stats.distinctCategories.length === 1 
                     ? CATEGORY_COLORS[stats.distinctCategories[0]] 
-                    : '#C8F31D'
+                    : 'var(--accent)'
                 }} 
               />
               <span className="text-xs font-bold text-app-primary capitalize">

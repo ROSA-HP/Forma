@@ -16,6 +16,7 @@ import { NotificationService } from '../services/notification.ts';
 import { SoundService } from '../services/sound.ts';
 import { HapticsService } from '../services/haptics.ts';
 import { KeepAwakeService } from '../services/keepAwake.ts';
+import { NativeShell } from '../services/nativeShell.ts';
 import { getTranslations, setDocumentDirection, Translations } from '../i18n/index.ts';
 import { 
   SEED_EXERCISES, 
@@ -220,9 +221,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) {
-      themeMeta.setAttribute('content', isDark ? '#0B0D10' : '#F6F7F9');
+      themeMeta.setAttribute('content', isDark ? '#0B0D10' : '#EEF1F5');
     }
+    void NativeShell.syncTheme(isDark);
   };
+
+  // Follow OS dark/light changes live while the theme is set to "system"
+  useEffect(() => {
+    if (settings.theme !== 'system' || typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => applyTheme('system');
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, [settings.theme]);
 
   const updateSettings = async (partial: Partial<Settings>) => {
     const updated = { ...settings, ...partial };

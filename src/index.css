@@ -1,8 +1,35 @@
 @import "tailwindcss";
 @import "@fontsource-variable/geist";
 
+/*
+ * Design tokens are registered with Tailwind so every utility, including
+ * opacity modifiers (bg-app-accent/15, border-app/60, text-app-muted/70) and
+ * hover/active variants, resolves against the live theme variables.
+ *
+ * The accent is split in three roles:
+ *   --accent       brand fill (buttons, badges, progress bars)
+ *   --accent-ink   accent used as text / icon colour on a surface
+ *   --accent-line  accent used as a border / focus outline on a surface
+ * In dark mode all three are the same lime; in light mode the fill stays lime
+ * (with dark text on top) while ink and line deepen so they stay readable.
+ */
+@theme inline {
+  --color-app-bg: var(--bg);
+  --color-app-surface: var(--surface);
+  --color-app-surface-2: var(--surface-2);
+  --color-app: var(--border);
+  --color-app-primary: var(--text);
+  --color-app-muted: var(--muted);
+  --color-app-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --text-color-app-accent: var(--accent-ink);
+  --border-color-app-accent: var(--accent-line);
+  --ring-color-app-accent: var(--accent-line);
+}
+
 @layer base {
   :root {
+    color-scheme: dark;
     --bg: #0B0D10;
     --surface: #14171C;
     --surface-2: #1C2027;
@@ -10,31 +37,32 @@
     --text: #F2F4F7;
     --muted: #9AA3AF;
     --accent: #C8F31D;
+    --accent-ink: #C8F31D;
+    --accent-line: #C8F31D;
     --on-accent: #0B0D10;
-
-    /* Category colors */
-    --cat-gym: #60A5FA;
-    --cat-calisthenics: #A78BFA;
-    --cat-martial-arts: #FB7185;
-    --cat-cardio: #FBBF24;
-    --cat-custom: #2DD4BF;
-
-    /* Bands */
-    --band-deficit: #F87171;
-    --band-maint: #60A5FA;
-    --band-optimal: #C8F31D;
-    --band-peak: #FBBF24;
+    --card-shadow: none;
   }
 
   html.light {
-    --bg: #F6F7F9;
+    color-scheme: light;
+    --bg: #EEF1F5;
     --surface: #FFFFFF;
-    --surface-2: #EEF0F3;
-    --border: #E2E5EA;
-    --text: #0F1318;
-    --muted: #5B6573;
-    --accent: #4D7C0F;
-    --on-accent: #FFFFFF;
+    --surface-2: #F3F5F8;
+    --border: #DCE1E8;
+    --text: #0D1117;
+    --muted: #586271;
+    --accent: #C2F01A;
+    --accent-ink: #3B6B00;
+    --accent-line: #6FA300;
+    --on-accent: #0B0D10;
+    --card-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 2px 8px rgba(16, 24, 40, .05);
+  }
+
+  /* Light mode: lift cards off the background instead of relying on hairlines */
+  html.light .bg-app-surface.border,
+  html.light .bg-app-surface.rounded-2xl,
+  html.light .bg-app-surface.rounded-xl {
+    box-shadow: var(--card-shadow);
   }
 
   html, body {
@@ -79,18 +107,6 @@
   }
 }
 
-/* Custom utilitarian utility classes */
-.bg-app-bg { background-color: var(--bg); }
-.bg-app-surface { background-color: var(--surface); }
-.bg-app-surface-2 { background-color: var(--surface-2); }
-.border-app { border-color: var(--border); }
-.text-app-primary { color: var(--text); }
-.text-app-muted { color: var(--muted); }
-.bg-app-accent { background-color: var(--accent); }
-.text-app-accent { color: var(--accent); }
-.text-on-accent { color: var(--on-accent); }
-.border-app-accent { border-color: var(--accent); }
-
 /* Hide scrollbars cleanly */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -131,11 +147,14 @@ button:active {
 }
 
 
+/* The splash is always the black brand screen, matching the native Android splash */
 .splash-overlay {
+  --accent: #C8F31D;
+  --text: #F2F4F7;
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: var(--bg);
+  background: #0B0D10;
   display: flex;
   flex-direction: column;
   align-items: center;

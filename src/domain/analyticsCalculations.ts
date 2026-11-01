@@ -1,4 +1,5 @@
 import { Session, Exercise, ExerciseCategory } from '../types/index.ts';
+import { epley1RM } from './calculations.ts';
 
 export interface CalendarDay {
   date: Date;
@@ -245,7 +246,8 @@ export function calculateVolumeTrend(
       }
 
       for (const set of session.sets) {
-        if (!set.done) continue;
+        // Working volume only: warm-ups are excluded like everywhere else in the app
+        if (!set.done || set.tag === 'warmup') continue;
         const reps = set.reps || 0;
         const load = Math.max(0, set.loadKg || 0);
         totalVolumeKg += load * reps;
@@ -292,10 +294,11 @@ export function calculateExercisePRs(
   }
 
   for (const session of sessions) {
-    const sessionDate = session.startedAt ? session.startedAt.split('T')[0] : undefined;
+    // Local calendar day (the raw UTC prefix is off by one for late-night sessions)
+    const sessionDate = session.startedAt ? formatDateKey(new Date(session.startedAt)) : undefined;
 
     for (const set of session.sets) {
-      if (!set.done) continue;
+      if (!set.done || set.tag === 'warmup') continue;
       const ex = exercisesMap.get(set.exerciseId);
       if (!ex) continue;
 
@@ -337,9 +340,9 @@ export function calculateExercisePRs(
         detail.heaviestWeightDate = sessionDate;
       }
 
-      // Epley formula 1RM: w * (1 + r/30) for r > 1, or w for r = 1
+      // Same Epley estimate (and >12-rep reliability cap) as the live workout screen
       if (load > 0 && reps > 0) {
-        const est1RM = reps === 1 ? load : Math.round(load * (1 + reps / 30) * 10) / 10;
+        const est1RM = epley1RM(load, reps);
         if (est1RM > detail.bestEstimated1RM) {
           detail.bestEstimated1RM = est1RM;
           detail.best1RMDate = sessionDate;

@@ -40,6 +40,7 @@ import {
   validateImportPayload, 
   calculateStorageStats 
 } from '../domain/dataTransfer.ts';
+import { localDayKey } from '../domain/calculations.ts';
 import { AppTheme, AppLanguage, WeightUnit, PRCelebrationTiming } from '../types/index.ts';
 
 export const SettingsScreen: React.FC = () => {
@@ -155,7 +156,7 @@ export const SettingsScreen: React.FC = () => {
     const data = await StorageService.exportData();
     const jsonStr = JSON.stringify(data, null, 2);
     ShareService.downloadFile(
-      `forma_backup_${new Date().toISOString().split('T')[0]}.json`,
+      `forma_backup_${localDayKey(new Date())}.json`,
       jsonStr,
       'application/json'
     );
@@ -166,7 +167,7 @@ export const SettingsScreen: React.FC = () => {
     HapticsService.medium();
     const csv = await StorageService.exportCSV();
     ShareService.downloadFile(
-      `forma_workouts_${new Date().toISOString().split('T')[0]}.csv`,
+      `forma_workouts_${localDayKey(new Date())}.csv`,
       csv,
       'text/csv'
     );
@@ -951,7 +952,7 @@ export const SettingsScreen: React.FC = () => {
 
       {/* App Version / Local First Badge */}
       <footer className="text-center py-2 text-xs text-app-muted space-y-1">
-        <p className="font-bold text-app-primary">{t.aboutVersion}</p>
+        <p className="font-bold text-app-primary">{t.aboutVersion.replace('{version}', __APP_VERSION__)}</p>
         <p className="text-[11px] opacity-75">
           {t.aboutDesc}
         </p>

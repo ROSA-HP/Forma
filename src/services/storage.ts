@@ -12,6 +12,7 @@ import {
 } from '../types/index.ts';
 import { DEFAULT_SETTINGS } from '../domain/constants.ts';
 import { validateImportPayload, escapeCSVCell } from '../domain/dataTransfer.ts';
+import { localDayKey } from '../domain/calculations.ts';
 
 const DB_NAME = 'trainlog_db';
 const DB_VERSION = 1;
@@ -318,7 +319,7 @@ class WebStorageService implements IStorageService {
     ];
 
     for (const s of sessions) {
-      const date = s.startedAt.split('T')[0];
+      const date = localDayKey(new Date(s.startedAt));
       const coll = s.collectionName || 'Custom Workout';
       const loc = s.locationName || '';
 

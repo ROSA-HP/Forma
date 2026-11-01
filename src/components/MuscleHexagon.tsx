@@ -128,7 +128,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
         <polygon
           points={points100}
           fill="none"
-          stroke="var(--accent)"
+          stroke="var(--accent-line)"
           strokeDasharray="3 3"
           strokeOpacity="0.75"
           strokeWidth="1"
@@ -145,7 +145,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
           <text
             x={cx + maxR * (100 / 150) * Math.cos((-30 * Math.PI) / 180) + 4}
             y={cy + maxR * (100 / 150) * Math.sin((-30 * Math.PI) / 180) - 2}
-            fill="var(--accent)"
+            fill="var(--accent-ink)"
             fontSize="8"
             fontWeight="700"
             letterSpacing="0.05em"
@@ -188,7 +188,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
           points={currentPoints}
           fill="var(--accent)"
           fillOpacity="0.2"
-          stroke="var(--accent)"
+          stroke="var(--accent-line)"
           strokeWidth="2"
           strokeLinejoin="round"
         />

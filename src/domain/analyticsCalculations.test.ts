@@ -196,3 +196,33 @@ describe('Analytics & History Domain Calculations', () => {
     assert.strictEqual(tierMid.progressPct, 50); // (1400-800) / (2000-800) = 600 / 1200 = 50%
   });
 });
+
+describe('warm-up sets in analytics', () => {
+  const s: Session = {
+    id: 'w',
+    number: 1,
+    startedAt: new Date(2026, 9, 28, 10).toISOString(),
+    endedAt: new Date(2026, 9, 28, 11).toISOString(),
+    pausedMs: 0,
+    xpGained: 0,
+    sets: [
+      { id: 'w1', exerciseId: 'bench', loadKg: 140, reps: 1, tag: 'warmup', done: true },
+      { id: 'w2', exerciseId: 'bench', loadKg: 100, reps: 5, tag: 'normal', done: true }
+    ]
+  };
+  const bench: Exercise = {
+    id: 'bench', name: 'Bench', category: 'gym', equipment: 'barbell', trackingType: 'weight_reps',
+    primaryMuscles: ['chest'], secondaryMuscles: [], defaultRestSec: 90, incrementKg: 2.5, source: 'builtin'
+  };
+
+  it('are excluded from weekly volume', () => {
+    const trend = calculateVolumeTrend([s], 1, new Date(2026, 9, 29));
+    assert.strictEqual(trend[0].totalVolumeKg, 500);
+  });
+
+  it('never count as all-time records', () => {
+    const [pr] = calculateExercisePRs([s], [bench]);
+    assert.strictEqual(pr.heaviestWeightKg, 100);
+    assert.strictEqual(pr.bestEstimated1RM, 116.7);
+  });
+});
