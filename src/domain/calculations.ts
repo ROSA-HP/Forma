@@ -587,6 +587,36 @@ export function calculateXP(
   };
 }
 
+/**
+ * Lifetime XP actually earned: the XP stored on each finished session (which
+ * already includes its PR bonuses). Sessions saved without it (imports, old
+ * data) fall back to the base rule of 100 per workout + 10 per working set.
+ */
+export function totalEarnedXP(sessions: Session[]): number {
+  let xp = 0;
+  for (const s of sessions) {
+    if (s.xpGained > 0) {
+      xp += s.xpGained;
+    } else {
+      xp += 100 + s.sets.filter(item => item.done && item.tag !== 'warmup').length * 10;
+    }
+  }
+  return xp;
+}
+
+/**
+ * Days from the first logged session to `referenceTimeMs`, never less than one
+ * week. This is the window an "all time" weekly average should be taken over.
+ */
+export function trainingSpanDays(sessions: Session[], referenceTimeMs: number = Date.now()): number {
+  let earliest = referenceTimeMs;
+  for (const s of sessions) {
+    const t = new Date(s.startedAt).getTime();
+    if (Number.isFinite(t) && t < earliest) earliest = t;
+  }
+  return Math.max(7, Math.ceil((referenceTimeMs - earliest) / 86_400_000));
+}
+
 /** Local calendar-day key "YYYY-MM-DD" — avoids the UTC off-by-one of Date#toISOString. */
 export function localDayKey(d: Date): string {
   const y = d.getFullYear();

@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.2.0 — 2026-11-13
+
+### Collections show the muscles they really train
+- The **Muscle Coverage** hexagon on a collection was fed raw set counts into a percentage chart, so
+  it always drew a flat dot in the middle. It now plots each region relative to the most-trained
+  one, next to a bar list with the planned sets per region and a chip for every individual muscle.
+- Secondary muscles count half a set, the same rule the Progress screen uses. Forearms, adductors and
+  hip flexors are filed under Arms / Legs instead of disappearing.
+- It also says which regions the collection does not train at all.
+
+### Body profile (new)
+- Enter your **height** next to your weight in Settings and Forma classifies your body type from
+  BMI: underweight (skinny), healthy weight, overweight or obese, with a scale bar, the healthy
+  weight range for your height and how far you are from it. Shown in Settings and on Progress.
+- Weight is now entered in your own unit (kg or lb). Empty or implausible values are rejected
+  instead of silently turning into 75 kg.
+- BMI cannot tell muscle from fat; the card says so.
+
+### Progress and tracking fixes
+- **Recovery toggle did nothing.** The radar now switches to real recovery per region, with its own
+  0–100 scale and colours.
+- **"ALL" time range showed ~0% everywhere.** It averaged over 100 years; it now averages over the
+  weeks you have actually trained.
+- **Weekly volume chart drew no bars.** Fixed, and it follows your kg / lb setting.
+- **Level and XP were inflated by 250 XP** (five PRs that never happened) and the Calendar used a
+  different level ladder than Progress. Both now use the XP stored on your sessions.
+- **Hall of Fame hid exercises** unless they held all four record types, so bodyweight moves such as
+  pull-ups never appeared. An exercise now shows when it holds any selected record; never-logged
+  exercises are left out; weights follow kg / lb.
+- **Library showed placeholder numbers** ("100 kg PR", "3 sets logged", "2 days ago") on every
+  exercise. It now shows each exercise's real best, sets logged and last session.
+- Tap a region on Progress to see its individual muscles (weekly sets against target, or recovery).
+- Region rows show your real weekly sets against your own target instead of a fixed "10–20 sets/wk".
+- A max-reps tie keeps the heavier set as the record.
+
+### Light theme, reworked again
+- Neon lime only works on black. In light mode the accent is now a **deep green with white text**
+  for buttons and selected states, on a soft green-grey background with white cards.
+- Status colours (low / maintain / optimal / peak, recovery), discipline colours and the amber /
+  green / red / blue labels all have darker light-mode shades, so badges and small text are
+  readable instead of washed out. Dark mode is unchanged.
+
 ## v1.1.1 — 2026-11-01
 
 ### Seamless launch on Android

@@ -24,10 +24,11 @@ import {
   CollectionItem, 
   CollectionRole, 
   CollectionGoal, 
-  ExerciseCategory 
+  ExerciseCategory,
+  MuscleGroup
 } from '../types/index.ts';
 import { computeCollectionStats } from '../domain/collectionCalculations.ts';
-import { CATEGORY_COLORS, GOAL_PRESETS } from '../domain/constants.ts';
+import { CATEGORY_COLORS, GOAL_PRESETS, REGION_ORDER } from '../domain/constants.ts';
 import { MuscleHexagon } from '../components/MuscleHexagon.tsx';
 import { ExercisePickerModal } from '../components/ExercisePickerModal.tsx';
 import { ScheduleModal } from '../components/ScheduleModal.tsx';
@@ -85,6 +86,14 @@ export const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
   }
 
   const stats = computeCollectionStats(collection, exercisesMap);
+
+  // Muscle coverage of the plan: regions most-trained first, then the individual muscles
+  const regionsByCoverage = [...REGION_ORDER].sort((a, b) => stats.regionSetCounts[b] - stats.regionSetCounts[a]);
+  const coveredRegions = regionsByCoverage.filter(r => stats.regionSetCounts[r] > 0);
+  const missingRegions = REGION_ORDER.filter(r => stats.regionSetCounts[r] === 0);
+  const musclesByLoad = (Object.entries(stats.muscleSetCounts) as [MuscleGroup, number][])
+    .sort((a, b) => b[1] - a[1]);
+  const formatSets = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
   const handleSaveName = async () => {
     if (nameInput.trim() && nameInput.trim() !== collection.name) {
@@ -374,16 +383,69 @@ export const CollectionDetailScreen: React.FC<CollectionDetailScreenProps> = ({
           </button>
 
           {isHexagonOpen && (
-            <div className="p-4 pt-1 border-t border-app flex flex-col items-center">
-              <MuscleHexagon
-                values={stats.regionSetCounts}
-                mode="volume"
-                size="sm"
-                showLabels={true}
-              />
-              <span className="text-[11px] text-app-muted mt-2 text-center">
-                Planned working set distribution across regions
-              </span>
+            <div className="p-4 pt-3 border-t border-app">
+              {stats.totalSets === 0 || coveredRegions.length === 0 ? (
+                <p className="text-xs text-app-muted text-center py-4">{t.coverageEmpty}</p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="w-36 shrink-0">
+                      <MuscleHexagon
+                        values={stats.regionCoverage}
+                        mode="coverage"
+                        size="sm"
+                        showLabels={true}
+                      />
+                    </div>
+
+                    {/* Region bars: same numbers as the chart, most-trained first */}
+                    <ul className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      {regionsByCoverage.map(region => {
+                        const sets = stats.regionSetCounts[region];
+                        const pct = stats.regionCoverage[region];
+                        return (
+                          <li key={region} className="flex flex-col gap-0.5">
+                            <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                              <span className={`font-semibold truncate ${sets > 0 ? 'text-app-primary' : 'text-app-muted'}`}>
+                                {t[`region_${region}` as keyof typeof t]}
+                              </span>
+                              <span className="text-app-muted tabular-nums shrink-0">
+                                {sets > 0 ? `${formatSets(sets)} ${t.sets.toLowerCase()}` : '–'}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-app-surface-2 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ width: `${pct}%`, backgroundColor: 'var(--accent-line)' }}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Individual muscles the plan trains */}
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {musclesByLoad.map(([muscle, sets]) => (
+                      <span
+                        key={muscle}
+                        className="px-2 py-0.5 rounded-md bg-app-surface-2 border border-app text-[10px] font-semibold text-app-primary"
+                      >
+                        {t[`muscle_${muscle}` as keyof typeof t]}{' '}
+                        <span className="text-app-muted tabular-nums font-medium">{formatSets(sets)}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-app-muted mt-3 leading-relaxed">
+                    {missingRegions.length > 0
+                      ? t.coverageMissing.replace('{regions}', missingRegions.map(r => t[`region_${r}` as keyof typeof t]).join(', '))
+                      : t.coverageAllRegions}{' '}
+                    {t.coverageHint}
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>

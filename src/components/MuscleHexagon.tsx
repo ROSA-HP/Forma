@@ -1,13 +1,18 @@
 import React from 'react';
 import { Region } from '../types/index.ts';
-import { REGION_ORDER, BAND_COLORS } from '../domain/constants.ts';
+import { REGION_ORDER, BAND_COLORS, readinessColor } from '../domain/constants.ts';
 import { getMuscleBand, formatRegionName } from '../domain/calculations.ts';
 import { useApp } from '../context/AppContext.tsx';
 import type { Translations } from '../i18n/index.ts';
 
 interface MuscleHexagonProps {
   values: Record<Region, number> | number[];
-  mode?: 'volume' | 'recovery';
+  /**
+   * volume   – % of the weekly set target, drawn on a 0–150 scale with a dashed 100% target ring.
+   * recovery – % recovered, 0–100 scale (a fully fresh athlete fills the chart).
+   * coverage – planned emphasis of a collection, 0–100 relative to its most-trained region.
+   */
+  mode?: 'volume' | 'recovery' | 'coverage';
   compareValues?: Record<Region, number> | number[];
   size?: 'sm' | 'md';
   showLabels?: boolean;
@@ -41,7 +46,22 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
   const height = isSmall ? 180 : 340;
   const cx = width / 2;
   const cy = height / 2;
-  const maxR = isSmall ? 52 : 108; // R at 150%
+  const maxR = isSmall ? 52 : 108; // radius of the outer ring
+
+  // Volume can overshoot its target, so it leaves headroom; the other modes top out at 100
+  const scaleMax = mode === 'volume' ? 150 : 100;
+  const scaleMin = mode === 'volume' ? 10 : 6; // keeps a zero vertex visible near the centre
+  const radiusFor = (val: number) => maxR * (Math.max(scaleMin, Math.min(scaleMax, val)) / scaleMax);
+
+  const colorFor = (val: number): string => {
+    if (mode === 'recovery') return readinessColor(val);
+    if (mode === 'coverage') return val > 0 ? 'var(--accent-line)' : 'var(--muted)';
+    return BAND_COLORS[getMuscleBand(val)];
+  };
+  const statusFor = (val: number): string => {
+    if (mode !== 'volume') return '';
+    return ` (${t[`band_${getMuscleBand(val)}` as keyof typeof t]})`;
+  };
 
   // Compute 6 vertex positions
   const getCoordinates = (radius: number, angleDeg: number) => {
@@ -62,20 +82,19 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
     }).join(' ');
   };
 
-  const points50 = makeHexagonPoints(maxR * (50 / 150));
-  const points100 = makeHexagonPoints(maxR * (100 / 150));
-  const points150 = makeHexagonPoints(maxR);
+  // Inner guide ring(s) plus the outer boundary
+  const innerRings = [50];
+  const targetRing = mode === 'volume' ? makeHexagonPoints(maxR * (100 / scaleMax)) : null;
+  const outerRing = makeHexagonPoints(maxR);
 
   // Current polygon points
   const currentVertices = REGION_ORDER.map((region, i) => {
     const val = getVal(values, i, region);
-    const clampedVal = Math.max(10, Math.min(150, val));
-    const r = maxR * (clampedVal / 150);
     return {
       region,
       val,
-      band: getMuscleBand(val),
-      ...getCoordinates(r, angles[i])
+      color: colorFor(val),
+      ...getCoordinates(radiusFor(val), angles[i])
     };
   });
 
@@ -86,9 +105,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
   if (compareValues) {
     comparePoints = REGION_ORDER.map((region, i) => {
       const val = getVal(compareValues, i, region);
-      const clampedVal = Math.max(10, Math.min(150, val));
-      const r = maxR * (clampedVal / 150);
-      const { x, y } = getCoordinates(r, angles[i]);
+      const { x, y } = getCoordinates(radiusFor(val), angles[i]);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
   }
@@ -96,8 +113,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
   // Accessible summary
   const ariaDescription = REGION_ORDER.map((r, i) => {
     const v = getVal(values, i, r);
-    const band = getMuscleBand(v);
-    return `${t[`region_${r}` as keyof typeof t] || formatRegionName(r)}: ${v}% (${t[`band_${band}` as keyof typeof t]})`;
+    return `${t[`region_${r}` as keyof typeof t] || formatRegionName(r)}: ${v}%${statusFor(v)}`;
   }).join(', ');
 
   // 3-letter codes for small size
@@ -119,38 +135,43 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
         aria-label={t.radarChartAria.replace('{mode}', mode).replace('{description}', ariaDescription)}
       >
         {/* Concentric Hexagons */}
+        {innerRings.map(pct => (
+          <polygon
+            key={pct}
+            points={makeHexagonPoints(maxR * (pct / scaleMax))}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth="1"
+          />
+        ))}
+        {targetRing && (
+          <polygon
+            points={targetRing}
+            fill="none"
+            stroke="var(--accent-line)"
+            strokeDasharray="3 3"
+            strokeOpacity="0.75"
+            strokeWidth="1"
+          />
+        )}
         <polygon
-          points={points50}
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth="1"
-        />
-        <polygon
-          points={points100}
-          fill="none"
-          stroke="var(--accent-line)"
-          strokeDasharray="3 3"
-          strokeOpacity="0.75"
-          strokeWidth="1"
-        />
-        <polygon
-          points={points150}
+          points={outerRing}
           fill="none"
           stroke="var(--border)"
           strokeWidth="1"
         />
 
-        {/* 100% Target Label */}
-        {!isSmall && (
+        {/* 100% Target Label (volume only: the other modes end at 100) */}
+        {!isSmall && targetRing && (
           <text
-            x={cx + maxR * (100 / 150) * Math.cos((-30 * Math.PI) / 180) + 4}
-            y={cy + maxR * (100 / 150) * Math.sin((-30 * Math.PI) / 180) - 2}
+            x={cx + maxR * (100 / scaleMax) * Math.cos((-30 * Math.PI) / 180) + 4}
+            y={cy + maxR * (100 / scaleMax) * Math.sin((-30 * Math.PI) / 180) - 2}
             fill="var(--accent-ink)"
             fontSize="8"
             fontWeight="700"
             letterSpacing="0.05em"
           >
-            100% TARGET
+            {t.hexTarget}
           </text>
         )}
 
@@ -187,7 +208,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
           className="hex-poly"
           points={currentPoints}
           fill="var(--accent)"
-          fillOpacity="0.2"
+          fillOpacity="var(--hex-fill-opacity)"
           stroke="var(--accent-line)"
           strokeWidth="2"
           strokeLinejoin="round"
@@ -195,7 +216,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
 
         {/* Vertex dots */}
         {currentVertices.map((v, i) => {
-          const color = BAND_COLORS[v.band];
+          const color = v.color;
           const isSelected = selectedRegion === v.region;
           return (
             <g 
@@ -210,7 +231,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
                 cy={v.y}
                 r={isSmall ? 3 : (isSelected ? 5.5 : 4)}
                 fill={color}
-                stroke="var(--bg)"
+                stroke="var(--surface)"
                 strokeWidth={isSmall ? 1 : 1.5}
               />
               {isSelected && (
@@ -232,7 +253,7 @@ export const MuscleHexagon: React.FC<MuscleHexagonProps> = ({
         {showLabels && currentVertices.map((v, i) => {
           const labelDist = maxR + (isSmall ? 14 : 26);
           const { x, y } = getCoordinates(labelDist, angles[i]);
-          const color = BAND_COLORS[v.band];
+          const color = mode === 'coverage' && v.val > 0 ? 'var(--text)' : v.color;
 
           let textAnchor: 'middle' | 'start' | 'end' = 'middle';
           if (angles[i] === -30 || angles[i] === 30) textAnchor = 'start';
@@ -271,13 +292,16 @@ export function getHexagonInsightLine(values: Record<Region, number>, t: Transla
   const peakRegions = REGION_ORDER.filter(r => (values[r] ?? 100) > 120).map(localize);
 
   if (deficitRegions.length > 0 && peakRegions.length > 0) {
-    return t.insightDeficitPeak.replace('{deficit}', deficitRegions.join(' & ')).replace('{peak}', peakRegions.join(' & '));
+    return t.insightDeficitPeak.replace('{deficit}', deficitRegions.join(', ')).replace('{peak}', peakRegions.join(', '));
+  }
+  if (deficitRegions.length === REGION_ORDER.length) {
+    return t.insightAllDeficit;
   }
   if (deficitRegions.length > 0) {
-    return t.insightDeficit.replace('{deficit}', deficitRegions.join(' & '));
+    return t.insightDeficit.replace('{deficit}', deficitRegions.join(', '));
   }
   if (peakRegions.length > 0) {
-    return t.insightPeak.replace('{peak}', peakRegions.join(' & '));
+    return t.insightPeak.replace('{peak}', peakRegions.join(', '));
   }
   return t.insightOptimal;
 }

@@ -41,21 +41,61 @@
     --accent-line: #C8F31D;
     --on-accent: #0B0D10;
     --card-shadow: none;
+    --hex-fill-opacity: 0.2;
+
+    /* Status colours: muscle volume bands and recovery readiness */
+    --band-deficit: #E85D5D;
+    --band-maintenance: #5B8DEF;
+    --band-optimal: #8FE34A;
+    --band-peak: #E0A83C;
+    --ready-fresh: #32B86B;
+    --ready-ok: #5B8DEF;
+    --ready-recovering: #E0A83C;
+    --ready-fatigued: #E85D5D;
+
+    /* Training discipline colours */
+    --cat-gym: #5B8DEF;
+    --cat-calisthenics: #E0A83C;
+    --cat-martial-arts: #9A78F0;
+    --cat-cardio: #32B86B;
+    --cat-custom: #D65FD2;
   }
 
+  /*
+   * Light theme. Neon lime only works on black, so on light surfaces the accent
+   * becomes a deep green that carries white text, and every status / category
+   * colour is a darker shade of its dark-mode hue. All text-on-surface pairs
+   * below clear WCAG AA (4.5:1) against both --surface and --bg.
+   */
   html.light {
     color-scheme: light;
-    --bg: #EEF1F5;
+    --bg: #F2F4F0;
     --surface: #FFFFFF;
-    --surface-2: #F3F5F8;
-    --border: #DCE1E8;
-    --text: #0D1117;
-    --muted: #586271;
-    --accent: #C2F01A;
-    --accent-ink: #3B6B00;
-    --accent-line: #6FA300;
-    --on-accent: #0B0D10;
-    --card-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 2px 8px rgba(16, 24, 40, .05);
+    --surface-2: #EDF0EA;
+    --border: #D9DED3;
+    --text: #10160E;
+    --muted: #57614F;
+    --accent: #367A0E;
+    --accent-ink: #2C6A07;
+    --accent-line: #3F8A12;
+    --on-accent: #FFFFFF;
+    --card-shadow: 0 1px 2px rgba(20, 30, 14, .05), 0 4px 12px rgba(20, 30, 14, .05);
+    --hex-fill-opacity: 0.16;
+
+    --band-deficit: #C93232;
+    --band-maintenance: #2A66CC;
+    --band-optimal: #207A34;
+    --band-peak: #9A5B00;
+    --ready-fresh: #207A34;
+    --ready-ok: #2A66CC;
+    --ready-recovering: #9A5B00;
+    --ready-fatigued: #C93232;
+
+    --cat-gym: #2A66CC;
+    --cat-calisthenics: #9A5B00;
+    --cat-martial-arts: #6238CC;
+    --cat-cardio: #1B7F47;
+    --cat-custom: #A6359F;
   }
 
   /* Light mode: lift cards off the background instead of relying on hairlines */
@@ -178,3 +218,25 @@ button:active {
     transition-duration: .01ms !important;
   }
 }
+
+/* ---------- Light theme: fixed-palette utilities ---------- */
+/*
+ * A number of screens use Tailwind's own palette for semantic colour (amber for
+ * records, emerald for success, red for destructive, sky / violet for PR types).
+ * Those -300/-400 tints are chosen for dark surfaces and wash out on white, so
+ * in light mode the same classes resolve to a deeper shade of the same hue.
+ */
+html.light .text-amber-400, html.light .hover\:text-amber-400:hover { color: #9A5B00; }
+html.light .text-emerald-400, html.light .hover\:text-emerald-400:hover { color: #1B7F47; }
+html.light .text-red-300, html.light .text-red-400,
+html.light .hover\:text-red-300:hover, html.light .hover\:text-red-400:hover { color: #C22D2D; }
+html.light .text-rose-400 { color: #BE2A55; }
+html.light .text-sky-400 { color: #0A6EA8; }
+html.light .text-blue-400 { color: #2A66CC; }
+html.light .text-violet-400 { color: #6238CC; }
+html.light .stroke-amber-400 { stroke: #B26B00; }
+html.light .stroke-sky-400 { stroke: #0A6EA8; }
+
+/* Near-black red panels (danger zones) become a soft red wash */
+html.light [class*="bg-red-950"] { background-color: rgba(201, 50, 50, .07); }
+

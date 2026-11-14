@@ -221,7 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) {
-      themeMeta.setAttribute('content', isDark ? '#0B0D10' : '#EEF1F5');
+      themeMeta.setAttribute('content', isDark ? '#0B0D10' : '#F2F4F0');
     }
     void NativeShell.syncTheme(isDark);
   };

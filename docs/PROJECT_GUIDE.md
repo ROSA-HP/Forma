@@ -16,7 +16,7 @@ creates stays on their device.
 | Records | Automatic PR detection (heaviest load, reps, Epley 1RM, volume), celebration timing setting |
 | Planning | Exercise library with built-in + custom exercises, collections/routines with per-item sets/reps/rest/role, weekly schedules with reminders |
 | History | Calendar month grid, sessions grouped per day, discipline filters, per-session summary and notes |
-| Body | Body measurements (weight, chest, waist, arms, thighs), locations |
+| Body | Body type from height + weight (BMI category and healthy range), body measurements (weight, chest, waist, arms, thighs), locations |
 | Personalisation | kg/lb, dark/light/system theme, English + Arabic (full RTL), reduced motion, plate inventory, calorie estimates |
 | Data | JSON backup/restore with validation, CSV export, storage-persistence request, full reset |
 | Platform | Installable PWA, offline cache, Android APK via Capacitor, local notifications (web + native) |

@@ -40,7 +40,9 @@ import {
   validateImportPayload, 
   calculateStorageStats 
 } from '../domain/dataTransfer.ts';
-import { localDayKey } from '../domain/calculations.ts';
+import { localDayKey, kgToLb, lbToKg } from '../domain/calculations.ts';
+import { isValidHeightCm, isValidWeightKg, calculateBodyProfile } from '../domain/bodyCalculations.ts';
+import { BodyProfileCard } from '../components/BodyProfileCard.tsx';
 import { AppTheme, AppLanguage, WeightUnit, PRCelebrationTiming } from '../types/index.ts';
 
 export const SettingsScreen: React.FC = () => {
@@ -58,6 +60,19 @@ export const SettingsScreen: React.FC = () => {
   } = useApp();
 
   const [nameInput, setNameInput] = useState(settings.profileName);
+
+  const weightInUnit = (kg: number) =>
+    settings.weightUnit === 'lb' ? kgToLb(kg) : Math.round(kg * 10) / 10;
+  const [weightInput, setWeightInput] = useState(String(weightInUnit(settings.userBodyweightKg)));
+  const [heightInput, setHeightInput] = useState(settings.heightCm ? String(settings.heightCm) : '');
+
+  // Keep the fields in step with the stored values (unit switch, import, reset)
+  useEffect(() => {
+    setWeightInput(String(weightInUnit(settings.userBodyweightKg)));
+  }, [settings.userBodyweightKg, settings.weightUnit]);
+  useEffect(() => {
+    setHeightInput(settings.heightCm ? String(settings.heightCm) : '');
+  }, [settings.heightCm]);
   const [newPlaceName, setNewPlaceName] = useState('');
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isPlaceDialogOpen, setIsPlaceDialogOpen] = useState(false);
@@ -133,6 +148,33 @@ export const SettingsScreen: React.FC = () => {
     if (nameInput !== settings.profileName) {
       await updateSettings({ profileName: nameInput.trim() });
       showToast(t.toastProfileUpdated);
+    }
+  };
+
+  // Weight is typed in the athlete's unit and stored in kg; an implausible or
+  // empty entry is discarded on blur instead of silently becoming a default.
+  const handleWeightBlur = async () => {
+    const typed = Number(weightInput);
+    const kg = settings.weightUnit === 'lb' ? lbToKg(typed) : typed;
+    if (weightInput.trim() !== '' && isValidWeightKg(kg)) {
+      if (Math.abs(kg - settings.userBodyweightKg) > 0.0005) {
+        await updateSettings({ userBodyweightKg: kg });
+      }
+    } else {
+      setWeightInput(String(weightInUnit(settings.userBodyweightKg)));
+    }
+  };
+
+  const handleHeightBlur = async () => {
+    if (heightInput.trim() === '') {
+      if (settings.heightCm !== undefined) await updateSettings({ heightCm: undefined });
+      return;
+    }
+    const cm = Math.round(Number(heightInput) * 10) / 10;
+    if (isValidHeightCm(cm)) {
+      if (cm !== settings.heightCm) await updateSettings({ heightCm: cm });
+    } else {
+      setHeightInput(settings.heightCm ? String(settings.heightCm) : '');
     }
   };
 
@@ -328,21 +370,53 @@ export const SettingsScreen: React.FC = () => {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5 pt-1">
-          <label htmlFor="settings-bw" className="text-xs font-semibold text-app-muted">
-            {t.userBodyweight}
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="settings-bw"
-              type="number"
-              value={settings.userBodyweightKg}
-              onChange={(e) => updateSettings({ userBodyweightKg: Number(e.target.value) || 75 })}
-              className="w-32 h-12 rounded-xl bg-app-surface-2 border border-app px-4 text-sm text-app-primary tabular-nums focus:outline-none focus:border-app-accent transition-colors"
-            />
-            <span className="text-sm font-semibold text-app-muted">kg</span>
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <label htmlFor="settings-bw" className="text-xs font-semibold text-app-muted">
+              {t.weightLabel}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="settings-bw"
+                type="number"
+                inputMode="decimal"
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                onBlur={handleWeightBlur}
+                className="w-full min-w-0 h-12 rounded-xl bg-app-surface-2 border border-app px-4 text-sm text-app-primary tabular-nums focus:outline-none focus:border-app-accent transition-colors"
+              />
+              <span className="text-sm font-semibold text-app-muted">{settings.weightUnit}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <label htmlFor="settings-height" className="text-xs font-semibold text-app-muted">
+              {t.heightLabel}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                id="settings-height"
+                type="number"
+                inputMode="decimal"
+                value={heightInput}
+                onChange={(e) => setHeightInput(e.target.value)}
+                onBlur={handleHeightBlur}
+                placeholder="175"
+                className="w-full min-w-0 h-12 rounded-xl bg-app-surface-2 border border-app px-4 text-sm text-app-primary tabular-nums placeholder:text-app-muted/50 focus:outline-none focus:border-app-accent transition-colors"
+              />
+              <span className="text-sm font-semibold text-app-muted">cm</span>
+            </div>
           </div>
         </div>
+        <p className="text-[11px] text-app-muted leading-relaxed">
+          {t.userBodyweight} · {t.heightHint}
+        </p>
+
+        {calculateBodyProfile(settings.heightCm, settings.userBodyweightKg) && (
+          <div className="pt-3 border-t border-app">
+            <BodyProfileCard embedded />
+          </div>
+        )}
       </section>
 
       {/* 2. Units & Themes */}

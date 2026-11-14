@@ -1,5 +1,17 @@
-import { Collection, CollectionItem, Exercise, Region, ExerciseCategory } from '../types/index.ts';
+import { Collection, CollectionItem, Exercise, Region, ExerciseCategory, MuscleGroup } from '../types/index.ts';
 import { REGION_ORDER, REGION_MUSCLES } from './constants.ts';
+
+/**
+ * Region membership used for a collection's planned coverage. Unlike the
+ * weekly-volume regions it also files the smaller muscles under their nearest
+ * region, so an exercise that only trains forearms, adductors or hip flexors
+ * still shows up on the chart instead of vanishing.
+ */
+export const COVERAGE_REGION_MUSCLES: Record<Region, MuscleGroup[]> = {
+  ...REGION_MUSCLES,
+  arms: [...REGION_MUSCLES.arms, 'forearms'],
+  legs: [...REGION_MUSCLES.legs, 'adductors', 'hip_flexors']
+};
 
 export interface CollectionComputedStats {
   totalSets: number;
@@ -7,7 +19,12 @@ export interface CollectionComputedStats {
   estimatedMinutes: number;
   distinctCategories: ExerciseCategory[];
   isMixed: boolean;
+  /** Planned sets per region: a set counts 1 where the region holds a primary muscle, 0.5 where only a secondary one. */
   regionSetCounts: Record<Region, number>;
+  /** 0–100 per region, relative to the most-trained region (which reads 100). All zero for an empty plan. */
+  regionCoverage: Record<Region, number>;
+  /** Planned sets per individual muscle (primary 1.0, secondary 0.5). Only muscles the plan touches. */
+  muscleSetCounts: Partial<Record<MuscleGroup, number>>;
   totalExerciseCount: number;
 }
 
@@ -29,6 +46,7 @@ export function computeCollectionStats(
     legs: 0,
     core: 0
   };
+  const muscleSetCounts: Partial<Record<MuscleGroup, number>> = {};
 
   for (const item of items) {
     const ex = exercisesMap.get(item.exerciseId);
@@ -41,7 +59,7 @@ export function computeCollectionStats(
 
       // Distribute sets into regions based on primary and secondary muscles
       for (const region of REGION_ORDER) {
-        const rMuscles = REGION_MUSCLES[region];
+        const rMuscles = COVERAGE_REGION_MUSCLES[region];
         const hasPrimary = ex.primaryMuscles.some(m => rMuscles.includes(m));
         const hasSecondary = ex.secondaryMuscles.some(m => rMuscles.includes(m));
 
@@ -51,7 +69,23 @@ export function computeCollectionStats(
           regionSetCounts[region] += Math.round(item.sets * 0.5 * 10) / 10;
         }
       }
+
+      for (const m of ex.primaryMuscles) {
+        muscleSetCounts[m] = (muscleSetCounts[m] ?? 0) + item.sets;
+      }
+      for (const m of ex.secondaryMuscles) {
+        if (ex.primaryMuscles.includes(m)) continue;
+        muscleSetCounts[m] = (muscleSetCounts[m] ?? 0) + item.sets * 0.5;
+      }
     }
+  }
+
+  const maxRegionSets = Math.max(...REGION_ORDER.map(r => regionSetCounts[r]));
+  const regionCoverage = {} as Record<Region, number>;
+  for (const region of REGION_ORDER) {
+    regionCoverage[region] = maxRegionSets > 0
+      ? Math.round((regionSetCounts[region] / maxRegionSets) * 100)
+      : 0;
   }
 
   const avgRestSec = totalSets > 0 ? Math.round(totalRestWeighted / totalSets) : 75;
@@ -65,6 +99,8 @@ export function computeCollectionStats(
     distinctCategories,
     isMixed: distinctCategories.length > 1,
     regionSetCounts,
+    regionCoverage,
+    muscleSetCounts,
     totalExerciseCount: items.length
   };
 }

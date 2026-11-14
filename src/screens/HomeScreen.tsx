@@ -15,16 +15,8 @@ import { MuscleHexagon } from '../components/MuscleHexagon.tsx';
 import { CategoryChip } from '../components/CategoryChip.tsx';
 import { calculateRecovery, estimateMinutes, kgToLb } from '../domain/calculations.ts';
 import { buildLastTrainedMap, calculateHomeWeekSummary } from '../domain/homeCalculations.ts';
-import { REGION_ORDER } from '../domain/constants.ts';
+import { REGION_ORDER, readinessColor } from '../domain/constants.ts';
 import { Region } from '../types/index.ts';
-
-// Readiness colour per region: fresh → ready → recovering → fatigued
-function readinessColor(pct: number): string {
-  if (pct >= 90) return '#32B86B';
-  if (pct >= 70) return '#5B8DEF';
-  if (pct >= 50) return '#E0A83C';
-  return '#E85D5D';
-}
 
 function formatCompact(value: number): string {
   if (value >= 10_000) return `${(value / 1000).toFixed(0)}k`;

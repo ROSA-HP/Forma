@@ -182,6 +182,8 @@ export interface Settings {
   prCelebrationTiming: PRCelebrationTiming;
   showCalories: boolean;
   userBodyweightKg: number;
+  /** Height in centimetres; unset until the athlete enters it. */
+  heightCm?: number;
   plateSetKg: number[];
   reduceAnimations: boolean;
   backupReminderDismissedAt?: string;

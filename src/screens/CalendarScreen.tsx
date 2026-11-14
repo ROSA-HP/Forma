@@ -26,16 +26,17 @@ import {
   formatDateKey, 
   getSessionDominantCategory, 
   getDayDisciplines,
-  filterSessionsByDiscipline 
+  filterSessionsByDiscipline,
+  calculateAthleteTier
 } from '../domain/analyticsCalculations.ts';
-import { calculateStreak, calculateXP } from '../domain/calculations.ts';
-import { CATEGORY_COLORS } from '../domain/constants.ts';
+import { calculateStreak, totalEarnedXP } from '../domain/calculations.ts';
+import { CATEGORY_COLORS, tint } from '../domain/constants.ts';
 
 // Derived from the shared category palette so the calendar never drifts from the rest of the app
 const DISCIPLINE_CONFIG = Object.fromEntries(
   (Object.keys(CATEGORY_COLORS) as ExerciseCategory[]).map(cat => {
     const color = CATEGORY_COLORS[cat];
-    return [cat, { color, bg: `${color}26`, border: `${color}66` }];
+    return [cat, { color, bg: tint(color, 15), border: tint(color, 40) }];
   })
 ) as Record<ExerciseCategory, { color: string; bg: string; border: string }>;
 
@@ -72,9 +73,8 @@ export const CalendarScreen: React.FC = () => {
     return calculateStreak(sessions, schedules);
   }, [sessions, schedules]);
 
-  const xp = useMemo(() => {
-    return calculateXP(sessions, 5);
-  }, [sessions]);
+  // Same XP total and rank ladder as the Progress screen
+  const tier = useMemo(() => calculateAthleteTier(totalEarnedXP(sessions)), [sessions]);
 
   // Calendar matrix days for current viewed month
   const calendarDays = useMemo(() => {
@@ -171,7 +171,7 @@ export const CalendarScreen: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted">
-              Active Streak
+              {t.activeStreak}
             </span>
             <span className="text-base font-bold text-app-primary tabular-nums">
               {streak.currentStreak} {t.days} {streak.onFire && '🔥'}
@@ -181,10 +181,10 @@ export const CalendarScreen: React.FC = () => {
 
         <div className="flex flex-col items-end">
           <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted">
-            Tier: {xp.rankTitle}
+            {tier.rankTitle}
           </span>
           <span className="text-sm font-bold text-app-accent tabular-nums">
-            Level {xp.level} · {xp.totalXP} XP
+            {t.levelLabel.replace('{level}', String(tier.level))} · {tier.totalXP.toLocaleString()} XP
           </span>
         </div>
       </section>
@@ -484,7 +484,7 @@ export const CalendarScreen: React.FC = () => {
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted">XP</span>
                         <span className="text-xs font-bold text-app-accent tabular-nums mt-0.5">
-                          +{session.xpGained || 50}
+                          +{session.xpGained || 100 + session.sets.filter(s => s.done && s.tag !== 'warmup').length * 10}
                         </span>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ExerciseCategory } from '../types/index.ts';
-import { CATEGORY_COLORS } from '../domain/constants.ts';
+import { CATEGORY_COLORS, tint } from '../domain/constants.ts';
 import { useApp } from '../context/AppContext.tsx';
 
 interface CategoryChipProps {
@@ -86,7 +86,7 @@ export const CategoryChip: React.FC<CategoryChipProps> = ({
   className = ''
 }) => {
   const { t } = useApp();
-  const color = CATEGORY_COLORS[category] || '#60A5FA';
+  const color = CATEGORY_COLORS[category] || 'var(--cat-gym)';
   const Icon = CATEGORY_ICONS[category] || CustomIcon;
 
   const label = (t[category as keyof typeof t] as string) || category.replace('_', ' ');
@@ -98,7 +98,7 @@ export const CategoryChip: React.FC<CategoryChipProps> = ({
       style={{
         borderInlineStartColor: color,
         borderInlineStartWidth: '3px',
-        backgroundColor: selected ? `${color}29` : `${color}12`,
+        backgroundColor: selected ? tint(color, 16) : tint(color, 7),
         borderColor: selected ? color : undefined
       }}
       className={`shrink-0 h-8 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors border border-app ${

@@ -326,8 +326,8 @@ export function calculateExercisePRs(
         detail.lifetimeVolumeKg += load * reps;
       }
 
-      // Max Reps
-      if (reps > detail.maxReps) {
+      // Max reps; on a tie the heavier set is the better record
+      if (reps > detail.maxReps || (reps > 0 && reps === detail.maxReps && load > (detail.maxRepsWeightKg ?? 0))) {
         detail.maxReps = reps;
         detail.maxRepsWeightKg = load;
         detail.maxRepsDate = sessionDate;
@@ -352,6 +352,58 @@ export function calculateExercisePRs(
   }
 
   return Array.from(prMap.values());
+}
+
+export interface ExerciseHistorySummary {
+  /** Completed working sets (warm-ups excluded). */
+  setsLogged: number;
+  /** ISO start time of the most recent session containing this exercise. */
+  lastLoggedAt?: string;
+  bestLoadKg: number;
+  maxReps: number;
+  bestDurationSec: number;
+  bestDistanceM: number;
+  bestRounds: number;
+}
+
+/**
+ * Per-exercise history in one pass: how often it was logged, when last, and
+ * the best value of each metric. Exercises never logged are absent from the map.
+ */
+export function summarizeExerciseHistory(sessions: Session[]): Map<string, ExerciseHistorySummary> {
+  const map = new Map<string, ExerciseHistorySummary>();
+
+  for (const session of sessions) {
+    for (const set of session.sets) {
+      if (!set.done || set.tag === 'warmup') continue;
+
+      let h = map.get(set.exerciseId);
+      if (!h) {
+        h = { setsLogged: 0, bestLoadKg: 0, maxReps: 0, bestDurationSec: 0, bestDistanceM: 0, bestRounds: 0 };
+        map.set(set.exerciseId, h);
+      }
+
+      h.setsLogged += 1;
+      if (session.startedAt && (!h.lastLoggedAt || session.startedAt > h.lastLoggedAt)) {
+        h.lastLoggedAt = session.startedAt;
+      }
+      h.bestLoadKg = Math.max(h.bestLoadKg, set.loadKg ?? 0);
+      h.maxReps = Math.max(h.maxReps, set.reps ?? 0);
+      h.bestDurationSec = Math.max(h.bestDurationSec, set.durationSec ?? 0);
+      h.bestDistanceM = Math.max(h.bestDistanceM, set.distanceM ?? 0);
+      h.bestRounds = Math.max(h.bestRounds, set.rounds ?? 0);
+    }
+  }
+
+  return map;
+}
+
+/** Whole local calendar days between an ISO timestamp and `now` (0 = today). */
+export function daysSince(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso);
+  const a = new Date(then.getFullYear(), then.getMonth(), then.getDate()).getTime();
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.max(0, Math.round((b - a) / 86_400_000));
 }
 
 /**

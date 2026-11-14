@@ -41,20 +41,39 @@ export const REGION_MUSCLES: Record<Region, MuscleGroup[]> = {
 
 export const HEATMAP_EXTRA_MUSCLES: MuscleGroup[] = ['forearms', 'adductors', 'hip_flexors'];
 
+// Category colours are theme variables too (see index.css): the dark-mode hues
+// are too pale to read as text or icons on a light surface.
 export const CATEGORY_COLORS: Record<ExerciseCategory, string> = {
-  gym: '#5B8DEF',
-  calisthenics: '#E0A83C',
-  martial_arts: '#7A4EE8',
-  cardio: '#32B86B',
-  custom: '#D65FD2'
+  gym: 'var(--cat-gym)',
+  calisthenics: 'var(--cat-calisthenics)',
+  martial_arts: 'var(--cat-martial-arts)',
+  cardio: 'var(--cat-cardio)',
+  custom: 'var(--cat-custom)'
 };
 
+/*
+ * Status colours are CSS variables (defined per theme in index.css) rather than
+ * fixed hex values, so they stay legible on both the dark and light surfaces.
+ */
 export const BAND_COLORS: Record<MuscleBand, string> = {
-  deficit: '#E85D5D',
-  maintenance: '#5B8DEF',
-  optimal: '#8FE34A',
-  peak: '#E0A83C'
+  deficit: 'var(--band-deficit)',
+  maintenance: 'var(--band-maintenance)',
+  optimal: 'var(--band-optimal)',
+  peak: 'var(--band-peak)'
 };
+
+/** Recovery colour: fresh (>=90) / ready (>=70) / recovering (>=50) / fatigued. */
+export function readinessColor(pct: number): string {
+  if (pct >= 90) return 'var(--ready-fresh)';
+  if (pct >= 70) return 'var(--ready-ok)';
+  if (pct >= 50) return 'var(--ready-recovering)';
+  return 'var(--ready-fatigued)';
+}
+
+/** Translucent tint of any CSS colour (works with var() values, unlike a hex-alpha suffix). */
+export function tint(color: string, percent: number): string {
+  return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
+}
 
 export const FUNCTIONAL_COLORS = {
   success: '#34D399',

@@ -1,48 +1,47 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  TrendingUp, 
-  Layers, 
-  Calendar as CalendarIcon, 
-  Flame, 
-  Scale, 
-  Trophy, 
-  AlertTriangle, 
-  Award, 
-  Zap, 
-  BarChart3, 
-  Dumbbell, 
-  CheckCircle2, 
-  Target, 
-  ChevronRight,
-  Sparkles,
-  Info
+import {
+  Layers,
+  Calendar as CalendarIcon,
+  Flame,
+  Trophy,
+  Info,
+  BarChart3,
+  ChevronDown
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 import { MuscleHexagon, getHexagonInsightLine } from '../components/MuscleHexagon.tsx';
-import { 
-  muscleLoad, 
-  regionValues, 
-  calculateBalanceScore, 
+import { BodyProfileCard } from '../components/BodyProfileCard.tsx';
+import {
+  muscleLoad,
+  regionValues,
   formatRegionName,
   calculateStreak,
-  calculateXP
+  calculateRecovery,
+  totalEarnedXP,
+  trainingSpanDays,
+  getMuscleBand,
+  kgToLb
 } from '../domain/calculations.ts';
-import { 
-  calculateVolumeTrend, 
-  calculateExercisePRs, 
-  calculateAthleteTier, 
-  ExercisePRDetail 
+import {
+  calculateVolumeTrend,
+  calculateExercisePRs,
+  calculateAthleteTier,
+  ExercisePRDetail
 } from '../domain/analyticsCalculations.ts';
+import { buildLastTrainedMap } from '../domain/homeCalculations.ts';
+import { REGION_ORDER, REGION_MUSCLES, BAND_COLORS, readinessColor, tint } from '../domain/constants.ts';
+import { Region, ExerciseCategory } from '../types/index.ts';
 
-type PRTypeFilter = Partial<Record<PRTypeKey, boolean>>;
 type PRTypeKey = 'estimated1RM' | 'heaviestWeight' | 'maxReps' | 'volume';
+type PRTypeFilter = Record<PRTypeKey, boolean>;
+type TimeRange = '7D' | '30D' | '90D' | 'ALL';
 
-const DEFAULT_PR_TYPE_FILTER: PRTypeFilter = { estimated1RM: true, heaviestWeight: true, maxReps: true, volume: true };
+const PR_TYPE_KEYS: PRTypeKey[] = ['estimated1RM', 'heaviestWeight', 'maxReps', 'volume'];
 const PR_FILTER_LABELS: Record<PRTypeKey, string> = {
   estimated1RM: '1RM',
   heaviestWeight: 'Wt',
   maxReps: 'Reps',
-  volume: 'Vol',
+  volume: 'Vol'
 };
 
 function prTypeI18nKey(key: PRTypeKey): keyof typeof import('../i18n/en.ts').en {
@@ -53,116 +52,124 @@ function prTypeI18nKey(key: PRTypeKey): keyof typeof import('../i18n/en.ts').en 
     case 'volume': return 'prTotalVolume';
   }
 }
-import { REGION_ORDER, BAND_COLORS } from '../domain/constants.ts';
-import { Region, ExerciseCategory } from '../types/index.ts';
+
+function hasPR(pr: ExercisePRDetail, key: PRTypeKey): boolean {
+  if (key === 'estimated1RM') return pr.bestEstimated1RM > 0;
+  if (key === 'heaviestWeight') return pr.heaviestWeightKg > 0;
+  if (key === 'maxReps') return pr.maxReps > 0;
+  return pr.lifetimeVolumeKg > 0;
+}
+
+function readinessKey(pct: number): 'ready_fresh' | 'ready_ok' | 'ready_recovering' | 'ready_fatigued' {
+  if (pct >= 90) return 'ready_fresh';
+  if (pct >= 70) return 'ready_ok';
+  if (pct >= 50) return 'ready_recovering';
+  return 'ready_fatigued';
+}
+
+/** 950 → "950", 1 240 → "1.2k", 18 400 → "18k" */
+function formatCompact(value: number): string {
+  if (value >= 10_000) return `${Math.round(value / 1000)}k`;
+  if (value >= 1_000) return `${(value / 1000).toFixed(1)}k`;
+  return String(Math.round(value));
+}
+
+const formatSets = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 export const ProgressScreen: React.FC = () => {
-  const { sessions, schedules, exercises, settings, t } = useApp();
+  const { sessions, schedules, exercises, settings, setActiveTab, t } = useApp();
 
-  const [timeRange, setTimeRange] = useState<'7D' | '30D' | '90D' | 'ALL'>('30D');
+  const [timeRange, setTimeRange] = useState<TimeRange>('30D');
   const [radarMetric, setRadarMetric] = useState<'volume' | 'recovery'>('volume');
-  const [selectedRegion, setSelectedRegion] = useState<Region>('back');
+  const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [prCategoryFilter, setPrCategoryFilter] = useState<ExerciseCategory | 'all'>('all');
-  const [prTypeFilter, setPrTypeFilter] = useState<PRTypeFilter>({ estimated1RM: true, heaviestWeight: true, maxReps: true, volume: true });
+  const [prTypeFilter, setPrTypeFilter] = useState<PRTypeFilter>({
+    estimated1RM: true, heaviestWeight: true, maxReps: true, volume: true
+  });
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
 
-  const exercisesMap = useMemo(() => {
-    return new Map(exercises.map(e => [e.id, e]));
-  }, [exercises]);
+  const unit = settings.weightUnit;
+  const inUnit = (kg: number) => (unit === 'lb' ? kgToLb(kg) : Math.round(kg * 10) / 10);
 
-  const streak = useMemo(() => {
-    return calculateStreak(sessions, schedules);
-  }, [sessions, schedules]);
+  const exercisesMap = useMemo(() => new Map(exercises.map(e => [e.id, e])), [exercises]);
 
-  const rawXP = useMemo(() => {
-    return calculateXP(sessions, 5);
-  }, [sessions]);
+  const streak = useMemo(() => calculateStreak(sessions, schedules), [sessions, schedules]);
 
-  const athleteTier = useMemo(() => {
-    return calculateAthleteTier(rawXP.totalXP);
-  }, [rawXP.totalXP]);
+  // Level and rank come from the XP actually stored on each finished session
+  const athleteTier = useMemo(() => calculateAthleteTier(totalEarnedXP(sessions)), [sessions]);
 
   // Rolling 8-week volume trend
-  const volumeTrend = useMemo(() => {
-    return calculateVolumeTrend(sessions, 8);
-  }, [sessions]);
+  const volumeTrend = useMemo(() => calculateVolumeTrend(sessions, 8), [sessions]);
+  const maxWeeklyVolume = useMemo(
+    () => Math.max(...volumeTrend.map(v => v.totalVolumeKg), 0),
+    [volumeTrend]
+  );
 
-  const maxWeeklyVolume = useMemo(() => {
-    if (volumeTrend.length === 0) return 1;
-    return Math.max(...volumeTrend.map(v => v.totalVolumeKg), 1);
-  }, [volumeTrend]);
-
-  // Filter sessions by selected time range
-  const filteredSessions = useMemo(() => {
-    if (timeRange === 'ALL') return sessions;
-    const now = Date.now();
-    const days = timeRange === '7D' ? 7 : timeRange === '30D' ? 30 : 90;
-    const cutoff = now - days * 24 * 60 * 60 * 1000;
-    return sessions.filter(s => new Date(s.startedAt).getTime() >= cutoff);
-  }, [sessions, timeRange]);
-
-  // Region breakdown calculations
+  // ---- Muscle balance (volume) ----
   const targetSets = settings.weeklySetsTargetPerMuscle || 14;
 
   const loadMap = useMemo(() => {
-    const days = timeRange === 'ALL' ? 36500 : timeRange === '7D' ? 7 : timeRange === '30D' ? 30 : 90;
-    return muscleLoad(filteredSessions, days, exercisesMap, targetSets);
-  }, [filteredSessions, exercisesMap, targetSets, timeRange]);
+    // "All time" averages over the weeks actually trained, not an arbitrary century
+    const days =
+      timeRange === 'ALL' ? trainingSpanDays(sessions)
+      : timeRange === '7D' ? 7
+      : timeRange === '30D' ? 30
+      : 90;
+    return muscleLoad(sessions, days, exercisesMap, targetSets);
+  }, [sessions, exercisesMap, targetSets, timeRange]);
 
-  const regions = useMemo(() => {
-    return regionValues(loadMap);
-  }, [loadMap]);
+  const regions = useMemo(() => regionValues(loadMap), [loadMap]);
 
-  const regionValuesRecord = useMemo(() => {
-    const record: Record<Region, number> = {
-      chest: regions.chest.pct,
-      delts: regions.delts.pct,
-      arms: regions.arms.pct,
-      back: regions.back.pct,
-      legs: regions.legs.pct,
-      core: regions.core.pct
-    };
+  const volumeValues = useMemo(() => {
+    const record = {} as Record<Region, number>;
+    for (const r of REGION_ORDER) record[r] = regions[r].pct;
     return record;
   }, [regions]);
 
+  const hasVolumeInRange = useMemo(
+    () => Object.values(loadMap).some(m => m.sets > 0),
+    [loadMap]
+  );
+
+  // ---- Recovery (always "right now", independent of the time range) ----
+  const recovery = useMemo(
+    () => calculateRecovery(buildLastTrainedMap(sessions, exercises)),
+    [sessions, exercises]
+  );
+
+  const isRecovery = radarMetric === 'recovery';
+  const chartValues = isRecovery ? recovery.regions : volumeValues;
+  const regionLabel = (r: Region) => (t[`region_${r}` as keyof typeof t] as string) || formatRegionName(r);
+
   const insightLine = useMemo(() => {
-    return getHexagonInsightLine(regionValuesRecord, t);
-  }, [regionValuesRecord]);
+    if (isRecovery) {
+      const tired = REGION_ORDER.filter(r => recovery.regions[r] < 90);
+      return tired.length === 0
+        ? t.readinessAllFresh
+        : t.readinessRecovering.replace('{regions}', tired.map(regionLabel).join(', '));
+    }
+    if (!hasVolumeInRange) return t.noTrainingInRange;
+    return getHexagonInsightLine(volumeValues, t);
+  }, [isRecovery, recovery, volumeValues, hasVolumeInRange, t]);
 
-  // Exercise Hall of Fame PRs
-  const exercisePRs = useMemo(() => {
-    return calculateExercisePRs(sessions, exercises);
-  }, [sessions, exercisesMap]);
-
-  const hasAnyPR = (pr: ExercisePRDetail, key: PRTypeKey): boolean => {
-    if (key === 'estimated1RM') return pr.bestEstimated1RM > 0;
-    if (key === 'heaviestWeight') return pr.heaviestWeightKg > 0;
-    if (key === 'maxReps') return pr.maxReps > 0;
-    if (key === 'volume') return pr.lifetimeVolumeKg > 0;
-    return false;
-  };
+  // ---- Personal records ----
+  const exercisePRs = useMemo(() => calculateExercisePRs(sessions, exercises), [sessions, exercises]);
 
   const filteredPRs = useMemo(() => {
-    let list: ExercisePRDetail[];
-    if (prCategoryFilter === 'all') {
-      list = exercisePRs;
-    } else {
-      list = exercisePRs.filter(pr => pr.category === prCategoryFilter);
-    }
-    return list.filter(pr =>
-      (prTypeFilter.estimated1RM ? hasAnyPR(pr, 'estimated1RM') : true) &&
-      (prTypeFilter.heaviestWeight ? hasAnyPR(pr, 'heaviestWeight') : true) &&
-      (prTypeFilter.maxReps ? hasAnyPR(pr, 'maxReps') : true) &&
-      (prTypeFilter.volume ? hasAnyPR(pr, 'volume') : true)
-    );
+    const enabled = PR_TYPE_KEYS.filter(k => prTypeFilter[k]);
+    return exercisePRs
+      // Only exercises that were actually logged, and that hold at least one of the selected record types
+      .filter(pr => pr.totalSetsCompleted > 0)
+      .filter(pr => prCategoryFilter === 'all' || pr.category === prCategoryFilter)
+      .filter(pr => enabled.some(k => hasPR(pr, k)))
+      .sort((a, b) => b.totalSetsCompleted - a.totalSetsCompleted);
   }, [exercisePRs, prCategoryFilter, prTypeFilter]);
 
-  // Total Lifetime Volume tonnage
+  // Lifetime tonnage: working sets with external load only (no warm-ups, no assisted loads)
   const totalLifetimeVolumeKg = useMemo(() => {
     let vol = 0;
     for (const session of sessions) {
       for (const set of session.sets) {
-        // Working sets with external load only (no warm-ups, no negative assisted loads)
         if (set.done && set.tag !== 'warmup' && (set.loadKg ?? 0) > 0 && (set.reps ?? 0) > 0) {
           vol += set.loadKg! * set.reps!;
         }
@@ -171,7 +178,8 @@ export const ProgressScreen: React.FC = () => {
     return vol;
   }, [sessions]);
 
-  const activeWeekData = selectedWeekIndex !== null ? volumeTrend[selectedWeekIndex] : volumeTrend[volumeTrend.length - 1];
+  const activeWeekIndex = selectedWeekIndex ?? volumeTrend.length - 1;
+  const activeWeekData = volumeTrend[activeWeekIndex];
 
   return (
     <div className="flex flex-col w-full px-4 pt-20 pb-28 max-w-xl mx-auto space-y-4">
@@ -189,22 +197,22 @@ export const ProgressScreen: React.FC = () => {
 
       {/* Athlete Rank & Level Hero Card */}
       <section className="p-4 rounded-xl bg-app-surface border border-app space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-app-surface-2 border border-app flex items-center justify-center text-2xl">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 shrink-0 rounded-xl bg-app-surface-2 border border-app flex items-center justify-center text-2xl">
               {athleteTier.badge}
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-app-accent">
-                Level {athleteTier.level} {t.athleteTier}
+                {t.levelLabel.replace('{level}', String(athleteTier.level))} · {t.athleteTier}
               </span>
-              <h2 className="text-base font-bold text-app-primary">
+              <h2 className="text-base font-bold text-app-primary truncate">
                 {athleteTier.rankTitle}
               </h2>
             </div>
           </div>
 
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end shrink-0">
             <span className="text-xs font-bold text-app-primary tabular-nums">
               {athleteTier.totalXP.toLocaleString()} XP
             </span>
@@ -216,16 +224,15 @@ export const ProgressScreen: React.FC = () => {
 
         {/* Level XP Progress Bar */}
         <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between text-[11px] text-app-muted">
-            <span>{t.athleteTier} Progression</span>
+          <div className="flex items-center justify-end text-[11px] text-app-muted">
             <span className="tabular-nums font-semibold text-app-primary">
-              {athleteTier.currentLevelXP} / {athleteTier.nextLevelXP} XP ({athleteTier.progressPct}%)
+              {athleteTier.totalXP.toLocaleString()} / {athleteTier.nextLevelXP.toLocaleString()} XP ({athleteTier.progressPct}%)
             </span>
           </div>
           <div className="w-full h-2 rounded-full bg-app-surface-2 border border-app overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-app-accent to-emerald-400 rounded-full transition-all duration-500"
-              style={{ width: `${athleteTier.progressPct}%` }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${athleteTier.progressPct}%`, backgroundColor: 'var(--accent-line)' }}
             />
           </div>
         </div>
@@ -235,7 +242,7 @@ export const ProgressScreen: React.FC = () => {
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted">{t.totalVolume}</span>
             <span className="text-xs font-bold text-app-primary tabular-nums mt-0.5">
-              {(totalLifetimeVolumeKg / 1000).toFixed(1)}k <span className="text-[10px] font-normal text-app-muted">kg</span>
+              {formatCompact(inUnit(totalLifetimeVolumeKg))} <span className="text-[10px] font-normal text-app-muted">{unit}</span>
             </span>
           </div>
           <div className="flex flex-col">
@@ -254,257 +261,295 @@ export const ProgressScreen: React.FC = () => {
         </div>
       </section>
 
-      {/* Hexagonal Kinetic Radar */}
+      {/* Muscle balance / recovery radar */}
       <section className="p-4 rounded-xl bg-app-surface border border-app space-y-4">
-        {/* Header & Metric Switcher */}
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-app-accent" />
+              <Layers className="w-4 h-4 text-app-accent shrink-0" />
               <h2 className="font-bold text-base text-app-primary">
                 {t.muscularBalance}
               </h2>
             </div>
             <span className="text-xs text-app-muted">
-              Volume allocation across primary kinetic regions
+              {isRecovery ? t.recoverySubtitle : t.muscleBalanceSubtitle}
             </span>
-          </div>
-
-          {/* Time Range Selector */}
-          <div className="flex items-center p-0.5 bg-app-surface-2 border border-app rounded-lg">
-            {(['7D', '30D', '90D', 'ALL'] as const).map(range => (
-              <button
-                key={range}
-                type="button"
-                onClick={() => setTimeRange(range)}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-all ${
-                  timeRange === range ? 'bg-app-accent text-on-accent' : 'text-app-muted hover:text-app-primary'
-                }`}
-              >
-                {range}
-              </button>
-            ))}
           </div>
         </div>
 
-        {/* Mode Switcher */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {/* Metric switcher */}
           <div className="flex items-center gap-1 p-0.5 bg-app-surface-2 border border-app rounded-lg">
-            <button
-              type="button"
-              onClick={() => setRadarMetric('volume')}
-              className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-all ${
-                radarMetric === 'volume' ? 'bg-app-accent text-on-accent' : 'text-app-muted'
-              }`}
-            >
-              {t.volume}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRadarMetric('recovery')}
-              className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-all ${
-                radarMetric === 'recovery' ? 'bg-app-accent text-on-accent' : 'text-app-muted'
-              }`}
-            >
-              {t.recovery}
-            </button>
+            {(['volume', 'recovery'] as const).map(metric => (
+              <button
+                key={metric}
+                type="button"
+                onClick={() => setRadarMetric(metric)}
+                aria-pressed={radarMetric === metric}
+                className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+                  radarMetric === metric ? 'bg-app-accent text-on-accent' : 'text-app-muted hover:text-app-primary'
+                }`}
+              >
+                {metric === 'volume' ? t.volume : t.recovery}
+              </button>
+            ))}
           </div>
-          <span className="text-[11px] text-app-muted tabular-nums">
-            Tap region to inspect
-          </span>
+
+          {/* Time range only applies to volume; recovery is always "now" */}
+          {!isRecovery && (
+            <div className="flex items-center p-0.5 bg-app-surface-2 border border-app rounded-lg">
+              {(['7D', '30D', '90D', 'ALL'] as const).map(range => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setTimeRange(range)}
+                  aria-pressed={timeRange === range}
+                  className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition-all ${
+                    timeRange === range ? 'bg-app-accent text-on-accent' : 'text-app-muted hover:text-app-primary'
+                  }`}
+                >
+                  {range === 'ALL' ? t.rangeAll : range}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Hexagon Chart Canvas */}
         <div className="py-2 flex justify-center">
           <MuscleHexagon
-            values={regionValuesRecord}
+            key={radarMetric}
+            values={chartValues}
             mode={radarMetric}
             size="md"
-            onSelectRegion={(r) => setSelectedRegion(r)}
-            selectedRegion={selectedRegion}
+            onSelectRegion={(r) => setSelectedRegion(prev => (prev === r ? null : r))}
+            selectedRegion={selectedRegion ?? undefined}
           />
         </div>
 
         {/* Insight Banner */}
         <div className="p-3 rounded-xl bg-app-surface-2 border border-app flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-app-accent shrink-0 mt-0.5" />
+          <Info className="w-4 h-4 text-app-accent shrink-0 mt-0.5" />
           <p className="text-xs text-app-primary leading-relaxed font-medium">
             {insightLine}
           </p>
         </div>
 
-        {/* 6 Region Status List */}
-        <div className="flex flex-col divide-y divide-app pt-1">
+        {/* Region list; tapping one opens its individual muscles */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] text-app-muted px-1">{t.tapRegionHint}</span>
           {REGION_ORDER.map(r => {
-            const reg = regions[r];
-            const color = BAND_COLORS[reg.band];
             const isSelected = selectedRegion === r;
+            const muscles = REGION_MUSCLES[r];
+            const pct = isRecovery ? recovery.regions[r] : regions[r].pct;
+            const color = isRecovery ? readinessColor(pct) : BAND_COLORS[regions[r].band];
+            const statusLabel = isRecovery
+              ? t[readinessKey(pct)]
+              : t[`bandName_${regions[r].band}` as keyof typeof t];
+            const avgWeeklySets = muscles.reduce((sum, m) => sum + loadMap[m].weeklyAvg, 0) / muscles.length;
 
             return (
               <div
                 key={r}
-                onClick={() => setSelectedRegion(r)}
-                className={`py-2.5 flex items-center justify-between cursor-pointer px-2 rounded-lg transition-colors ${
-                  isSelected ? 'bg-app-surface-2 border border-app' : 'hover:bg-app-surface-2/50 border border-transparent'
+                className={`rounded-lg border transition-colors ${
+                  isSelected ? 'bg-app-surface-2 border-app' : 'border-transparent'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-7 rounded-full" style={{ backgroundColor: color }} />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-app-primary">
-                      {t[`region_${r}` as keyof typeof t] || formatRegionName(r)}
-                    </span>
-                    {reg.unevenNote ? (
-                      <span className="text-[11px] text-amber-400 font-medium">
-                        {reg.unevenNote}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegion(isSelected ? null : r)}
+                  aria-expanded={isSelected}
+                  className="w-full py-2.5 px-2 flex items-center justify-between gap-2 text-start rounded-lg hover:bg-app-surface-2/60"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2 h-7 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold text-app-primary">
+                        {regionLabel(r)}
                       </span>
-                    ) : (
-                      <span className="text-[11px] text-app-muted">
-                        Target: 10–20 sets/wk
+                      <span className="text-[11px] text-app-muted truncate">
+                        {isRecovery
+                          ? statusLabel
+                          : regions[r].unevenNote
+                            ?? t.setsPerWeekOfTarget
+                                .replace('{sets}', formatSets(Math.round(avgWeeklySets * 10) / 10))
+                                .replace('{target}', String(targetSets))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold text-app-primary tabular-nums">
+                      {pct}%
+                    </span>
+                    {!isRecovery && (
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
+                        style={{ backgroundColor: tint(color, 12), color, borderColor: tint(color, 35) }}
+                      >
+                        {statusLabel}
                       </span>
                     )}
+                    <ChevronDown className={`w-4 h-4 text-app-muted transition-transform ${isSelected ? 'rotate-180' : ''}`} />
                   </div>
-                </div>
+                </button>
 
-                <div className="flex items-center gap-2.5">
-                  <span className="text-sm font-bold text-app-primary tabular-nums">
-                    {reg.pct}%
-                  </span>
-                  <span
-                    className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
-                    style={{
-                      backgroundColor: `${color}15`,
-                      color: color,
-                      borderColor: `${color}40`
-                    }}
-                  >
-                    {reg.band}
-                  </span>
-                </div>
+                {isSelected && (
+                  <ul className="px-3 pb-3 pt-1 flex flex-col gap-2">
+                    {muscles.map(m => {
+                      const mPct = isRecovery ? recovery.muscles[m].pct : loadMap[m].pct;
+                      const mColor = isRecovery ? readinessColor(mPct) : BAND_COLORS[getMuscleBand(mPct)];
+                      return (
+                        <li key={m} className="flex flex-col gap-1">
+                          <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                            <span className="font-semibold text-app-primary truncate">
+                              {t[`muscle_${m}` as keyof typeof t]}
+                            </span>
+                            <span className="text-app-muted tabular-nums shrink-0">
+                              {isRecovery
+                                ? `${mPct}%`
+                                : `${formatSets(loadMap[m].weeklyAvg)} / ${targetSets} · ${mPct}%`}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-app-surface overflow-hidden border border-app">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, mPct)}%`, backgroundColor: mColor }}
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             );
           })}
         </div>
       </section>
 
-      {/* Rolling Weekly Volume Progression Chart */}
+      {/* Body type from height + weight */}
+      <BodyProfileCard onOpenSettings={() => setActiveTab('more')} />
+
+      {/* Rolling Weekly Volume Chart */}
       <section className="p-4 rounded-xl bg-app-surface border border-app space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <BarChart3 className="w-4 h-4 text-app-accent" />
+              <BarChart3 className="w-4 h-4 text-app-accent shrink-0" />
               <h2 className="font-bold text-base text-app-primary">
-                {t.volumeProgress}
+                {t.weeklyVolumeTitle}
               </h2>
             </div>
             <span className="text-xs text-app-muted">
-              Rolling weekly tonnage &amp; session frequency
+              {t.weeklyVolumeSubtitle}
             </span>
           </div>
 
           {activeWeekData && (
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end shrink-0">
               <span className="text-xs font-bold text-app-primary tabular-nums">
-                {activeWeekData.totalVolumeKg.toLocaleString()} kg
+                {Math.round(inUnit(activeWeekData.totalVolumeKg)).toLocaleString()} {unit}
               </span>
-              <span className="text-[10px] text-app-muted">
+              <span className="text-[10px] text-app-muted tabular-nums">
                 {activeWeekData.sessionCount} {t.sessionPlural.toLowerCase()} · {activeWeekData.totalDurationMin}m
               </span>
             </div>
           )}
         </div>
 
-        {/* Bar Chart Visualization */}
-        <div className="pt-4 pb-2">
-          <div className="h-40 flex items-end justify-between gap-2 px-1">
-            {volumeTrend.map((point, idx) => {
-              const heightPct = maxWeeklyVolume > 0
-                ? Math.max(12, Math.round((point.totalVolumeKg / maxWeeklyVolume) * 100))
-                : 12;
-              const isSelected = selectedWeekIndex === idx || (selectedWeekIndex === null && idx === volumeTrend.length - 1);
+        {/* Bars: each column is a fixed-height track, the fill is the week's share of the best week */}
+        <div dir="ltr" className="flex items-stretch justify-between gap-1.5 h-44">
+          {volumeTrend.map((point, idx) => {
+            const heightPct = maxWeeklyVolume > 0 && point.totalVolumeKg > 0
+              ? Math.max(4, Math.round((point.totalVolumeKg / maxWeeklyVolume) * 100))
+              : 0;
+            const isSelected = idx === activeWeekIndex;
 
-              return (
-                <div
-                  key={point.startDate}
-                  onClick={() => setSelectedWeekIndex(idx)}
-                  className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
-                >
-                  {/* Top Volume Indicator */}
-                  <span className={`text-[10px] tabular-nums mb-1 transition-opacity ${
-                    isSelected ? 'text-app-accent font-bold opacity-100' : 'text-app-muted opacity-0 group-hover:opacity-100'
-                  }`}>
-                    {point.totalVolumeKg > 0 ? `${Math.round(point.totalVolumeKg / 1000)}k` : '0'}
-                  </span>
+            return (
+              <button
+                key={point.startDate}
+                type="button"
+                onClick={() => setSelectedWeekIndex(idx)}
+                aria-pressed={isSelected}
+                aria-label={`${t.weekOf.replace('{date}', point.weekLabel)}: ${Math.round(inUnit(point.totalVolumeKg))} ${unit}`}
+                className="flex-1 min-w-0 flex flex-col items-center gap-1"
+              >
+                <span className={`text-[10px] tabular-nums h-3.5 leading-none ${
+                  isSelected ? 'text-app-accent font-bold' : 'text-app-muted'
+                }`}>
+                  {point.totalVolumeKg > 0 ? formatCompact(inUnit(point.totalVolumeKg)) : ''}
+                </span>
 
-                  {/* Bar */}
-                  <div className="w-full max-w-[36px] bg-app-surface-2 rounded-t-lg overflow-hidden flex flex-col justify-end p-0.5 border border-app">
-                    <div
-                      className={`w-full rounded-t-md transition-all duration-300 ${
-                        isSelected
-                          ? 'bg-app-accent'
-                          : 'bg-app-accent/40 group-hover:bg-app-accent/70'
-                      }`}
-                      style={{ height: `${heightPct}%` }}
-                    />
-                  </div>
-
-                  {/* Week Label */}
-                  <span className={`text-[10px] mt-2 font-medium truncate max-w-[48px] ${
-                    isSelected ? 'text-app-accent font-bold' : 'text-app-muted'
-                  }`}>
-                    {point.weekLabel}
-                  </span>
+                <div className={`flex-1 w-full max-w-[36px] rounded-lg bg-app-surface-2 border flex flex-col justify-end overflow-hidden ${
+                  isSelected ? 'border-app-accent' : 'border-app'
+                }`}>
+                  <div
+                    className="w-full rounded-t-[5px] transition-all duration-300"
+                    style={{
+                      height: `${heightPct}%`,
+                      backgroundColor: 'var(--accent-line)',
+                      opacity: isSelected ? 1 : 0.45
+                    }}
+                  />
                 </div>
-              );
-            })}
-          </div>
+
+                <span className={`text-[9px] font-medium truncate max-w-full leading-none ${
+                  isSelected ? 'text-app-accent font-bold' : 'text-app-muted'
+                }`}>
+                  {point.weekLabel}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Selected Week Detail Summary Pill */}
+        {/* Selected Week Detail */}
         {activeWeekData && (
-          <div className="p-3 rounded-lg bg-app-surface-2 border border-app flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-app-accent" />
-              <span className="font-semibold text-app-primary">
-                Week of {activeWeekData.weekLabel}
+          <div className="p-3 rounded-lg bg-app-surface-2 border border-app flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <CalendarIcon className="w-4 h-4 text-app-accent shrink-0" />
+              <span className="font-semibold text-app-primary truncate">
+                {t.weekOf.replace('{date}', activeWeekData.weekLabel)}
               </span>
             </div>
-            <div className="flex items-center gap-3 text-app-muted tabular-nums">
+            <div className="flex items-center gap-2 text-app-muted tabular-nums shrink-0">
               <span>{activeWeekData.sessionCount} {t.workouts.toLowerCase()}</span>
               <span>•</span>
-              <span>{activeWeekData.totalReps} total reps</span>
+              <span>{t.totalRepsCount.replace('{count}', String(activeWeekData.totalReps))}</span>
             </div>
           </div>
         )}
       </section>
 
-      {/* All-Time PR Hall of Fame Showcase */}
+      {/* All-Time PR Hall of Fame */}
       <section className="p-4 rounded-xl bg-app-surface border border-app space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-amber-400" />
+              <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
               <h2 className="font-bold text-base text-app-primary">
                 {t.personalRecordsHall}
               </h2>
             </div>
             <span className="text-xs text-app-muted">
-              Lifetime best 1RM, heaviest weight &amp; max reps
+              {t.prHallSubtitle}
             </span>
           </div>
 
-          <span className="px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-400 text-xs font-bold tabular-nums">
-            {filteredPRs.length} {t.milestones}
+          <span className="shrink-0 px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/40 text-amber-400 text-xs font-bold tabular-nums">
+            {filteredPRs.length}
           </span>
         </div>
 
-        {/* PR Type Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {(['estimated1RM', 'heaviestWeight', 'maxReps', 'volume'] as PRTypeKey[]).map(key => (
+        {/* Record type toggles (an exercise shows when it holds any selected type) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {PR_TYPE_KEYS.map(key => (
             <button
               key={key}
               type="button"
               onClick={() => setPrTypeFilter(prev => ({ ...prev, [key]: !prev[key] }))}
+              aria-pressed={prTypeFilter[key]}
               className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${
                 prTypeFilter[key]
                   ? 'bg-app-accent/15 text-app-accent border-app-accent/40'
@@ -518,107 +563,89 @@ export const ProgressScreen: React.FC = () => {
         </div>
 
         {/* Category Filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setPrCategoryFilter('all')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${
-              prCategoryFilter === 'all'
-                ? 'bg-app-accent text-on-accent border-app-accent'
-                : 'bg-app-surface border-app text-app-muted hover:text-app-primary'
-            }`}
-          >
-            {t.allDisciplines}
-          </button>
-          {(['gym', 'calisthenics', 'martial_arts', 'cardio'] as ExerciseCategory[]).map(cat => (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {(['all', 'gym', 'calisthenics', 'martial_arts', 'cardio', 'custom'] as const).map(cat => (
             <button
               key={cat}
               type="button"
               onClick={() => setPrCategoryFilter(cat)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition-all border ${
+              aria-pressed={prCategoryFilter === cat}
+              className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${
                 prCategoryFilter === cat
                   ? 'bg-app-accent text-on-accent border-app-accent'
                   : 'bg-app-surface border-app text-app-muted hover:text-app-primary'
               }`}
             >
-              {t[cat as keyof typeof t] || cat}
+              {cat === 'all' ? t.allDisciplines : (t[cat as keyof typeof t] || cat)}
             </button>
           ))}
         </div>
 
-        {/* PR Cards Grid */}
+        {/* PR Cards */}
         {filteredPRs.length === 0 ? (
           <div className="p-6 rounded-xl bg-app-surface-2 border border-app flex flex-col items-center justify-center text-center space-y-2">
             <Trophy className="w-8 h-8 text-app-muted/60" />
             <span className="text-xs font-bold text-app-primary">{t.noRecordsYet}</span>
             <span className="text-[11px] text-app-muted">
-              Complete your first workout in this category to establish all-time records.
+              {t.prNoRecordsHint}
             </span>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             {filteredPRs.map(pr => {
-              const show1RM = prTypeFilter.estimated1RM && hasAnyPR(pr, 'estimated1RM');
-              const showWeight = prTypeFilter.heaviestWeight && hasAnyPR(pr, 'heaviestWeight');
-              const showReps = prTypeFilter.maxReps && hasAnyPR(pr, 'maxReps');
-              const showVol = prTypeFilter.volume && hasAnyPR(pr, 'volume');
+              const show1RM = prTypeFilter.estimated1RM && hasPR(pr, 'estimated1RM');
+              const showWeight = prTypeFilter.heaviestWeight && hasPR(pr, 'heaviestWeight');
+              const showReps = prTypeFilter.maxReps && hasPR(pr, 'maxReps');
+              const showVol = prTypeFilter.volume && hasPR(pr, 'volume');
 
               return (
                 <div
                   key={pr.exerciseId}
-                  className="p-2.5 rounded-xl bg-app-surface-2 border border-app flex items-center gap-3"
+                  className="p-2.5 rounded-xl bg-app-surface-2 border border-app flex flex-col gap-2"
                 >
-                  {/* Exercise name + category */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm font-bold text-app-primary truncate">
                         {pr.exerciseName}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-app-surface border border-app text-app-muted">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-app-surface border border-app text-app-muted">
                         {t[pr.category as keyof typeof t] || pr.category}
                       </span>
                     </div>
-                    <span className="text-[10px] text-app-muted mt-0.5">
-                      {pr.totalSetsCompleted} {t.sets.toLowerCase()} {t.logged}
+                    <span className="shrink-0 text-[10px] text-app-muted tabular-nums">
+                      {pr.totalSetsCompleted} {t.sets.toLowerCase()}
                     </span>
                   </div>
 
-                  {/* PR type badges row */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="grid grid-cols-4 gap-1.5">
                     {show1RM && (
-                      <div className="text-right min-w-[44px]">
+                      <div className="rounded-lg bg-app-surface border border-app px-1.5 py-1 text-center">
                         <span className="block text-[8px] font-bold uppercase tracking-wider text-amber-400">1RM</span>
-                        <span className="block text-xs font-black text-app-primary tabular-nums">
-                          {pr.bestEstimated1RM}
-                        </span>
-                        <span className="block text-[8px] text-app-muted">kg</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">{inUnit(pr.bestEstimated1RM)}</span>
+                        <span className="block text-[8px] text-app-muted">{unit}</span>
                       </div>
                     )}
                     {showWeight && (
-                      <div className="text-right min-w-[44px]">
+                      <div className="rounded-lg bg-app-surface border border-app px-1.5 py-1 text-center">
                         <span className="block text-[8px] font-bold uppercase tracking-wider text-emerald-400">Wt</span>
-                        <span className="block text-xs font-black text-app-primary tabular-nums">
-                          {pr.heaviestWeightKg}
-                        </span>
-                        <span className="block text-[8px] text-app-muted">kg × {pr.heaviestWeightReps}</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">{inUnit(pr.heaviestWeightKg)}</span>
+                        <span className="block text-[8px] text-app-muted">{unit} × {pr.heaviestWeightReps}</span>
                       </div>
                     )}
                     {showReps && (
-                      <div className="text-right min-w-[44px]">
+                      <div className="rounded-lg bg-app-surface border border-app px-1.5 py-1 text-center">
                         <span className="block text-[8px] font-bold uppercase tracking-wider text-sky-400">Reps</span>
-                        <span className="block text-xs font-black text-app-primary tabular-nums">
-                          {pr.maxReps}
+                        <span className="block text-xs font-black text-app-primary tabular-nums">{pr.maxReps}</span>
+                        <span className="block text-[8px] text-app-muted">
+                          {pr.maxRepsWeightKg ? `@ ${inUnit(pr.maxRepsWeightKg)} ${unit}` : t.reps.toLowerCase()}
                         </span>
-                        <span className="block text-[8px] text-app-muted">reps</span>
                       </div>
                     )}
                     {showVol && (
-                      <div className="text-right min-w-[44px]">
+                      <div className="rounded-lg bg-app-surface border border-app px-1.5 py-1 text-center">
                         <span className="block text-[8px] font-bold uppercase tracking-wider text-violet-400">Vol</span>
-                        <span className="block text-xs font-black text-app-accent tabular-nums">
-                          {(pr.lifetimeVolumeKg / 1000).toFixed(1)}k
-                        </span>
-                        <span className="block text-[8px] text-app-muted">kg</span>
+                        <span className="block text-xs font-black text-app-primary tabular-nums">{formatCompact(inUnit(pr.lifetimeVolumeKg))}</span>
+                        <span className="block text-[8px] text-app-muted">{unit}</span>
                       </div>
                     )}
                   </div>

@@ -123,7 +123,7 @@ export const ExercisePickerModal: React.FC<ExercisePickerModalProps> = ({
           {filtered.map(ex => {
             const isChecked = selectedIds.has(ex.id);
             const isAlreadyIn = alreadySelectedIds.includes(ex.id);
-            const catColor = CATEGORY_COLORS[ex.category] || '#60A5FA';
+            const catColor = CATEGORY_COLORS[ex.category] || 'var(--cat-gym)';
 
             return (
               <div

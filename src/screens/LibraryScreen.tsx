@@ -24,8 +24,9 @@ import { CategoryChip } from '../components/CategoryChip.tsx';
 import { ExerciseFilterSheet } from '../components/ExerciseFilterSheet.tsx';
 import { Dialog } from '../components/Dialog.tsx';
 import { Exercise, ExerciseCategory, Collection } from '../types/index.ts';
-import { CATEGORY_COLORS } from '../domain/constants.ts';
-import { formatMuscleName } from '../domain/calculations.ts';
+import { CATEGORY_COLORS, tint } from '../domain/constants.ts';
+import { formatMuscleName, kgToLb } from '../domain/calculations.ts';
+import { summarizeExerciseHistory, daysSince } from '../domain/analyticsCalculations.ts';
 import { filterAndSortExercises, ExerciseFilters } from '../domain/collectionCalculations.ts';
 import { HapticsService } from '../services/haptics.ts';
 
@@ -34,6 +35,7 @@ export const LibraryScreen: React.FC = () => {
     exercises, 
     collections, 
     sessions, 
+    settings,
     saveCollection, 
     togglePinExercise, 
     toggleArchiveExercise, 
@@ -162,23 +164,48 @@ export const LibraryScreen: React.FC = () => {
     }
   };
 
-  const formatTypedPRChip = (ex: Exercise): string => {
+  // Real history per exercise: sets logged, last session and best values
+  const history = React.useMemo(() => summarizeExerciseHistory(sessions), [sessions]);
+
+  /** Best logged value for the exercise's tracking type, or null when it was never logged. */
+  const formatTypedPRChip = (ex: Exercise): string | null => {
+    const h = history.get(ex.id);
+    if (!h) return null;
+    const unit = settings.weightUnit;
+    const load = (kg: number) => `${unit === 'lb' ? kgToLb(kg) : Math.round(kg * 10) / 10} ${unit}`;
+    const reps = `${h.maxReps} ${t.reps.toLowerCase()}`;
+
     switch (ex.trackingType) {
       case 'weight_reps':
-        return t.prChipWeight;
+        return h.bestLoadKg > 0 ? load(h.bestLoadKg) : (h.maxReps > 0 ? reps : null);
       case 'bodyweight':
-        return t.prChipBodyweight;
+        return h.bestLoadKg > 0 ? `+${load(h.bestLoadKg)}` : (h.maxReps > 0 ? reps : null);
       case 'reps':
-        return t.prChipReps;
+        return h.maxReps > 0 ? reps : null;
       case 'rounds':
-        return t.prChipRounds;
+        return h.bestRounds > 0 ? `${h.bestRounds} ${t.roundsWord}` : null;
       case 'distance_time':
-        return t.prChipDistance;
+        return h.bestDistanceM > 0
+          ? (h.bestDistanceM >= 1000 ? `${Math.round(h.bestDistanceM / 100) / 10} km` : `${Math.round(h.bestDistanceM)} m`)
+          : null;
       case 'duration':
-        return t.prChipDuration;
+        return h.bestDurationSec > 0
+          ? (h.bestDurationSec >= 60
+              ? `${Math.floor(h.bestDurationSec / 60)}:${String(Math.round(h.bestDurationSec % 60)).padStart(2, '0')}`
+              : `${Math.round(h.bestDurationSec)}s`)
+          : null;
       default:
-        return t.prChipRecord;
+        return null;
     }
+  };
+
+  const formatLastLogged = (ex: Exercise): string => {
+    const last = history.get(ex.id)?.lastLoggedAt;
+    if (!last) return t.neverLogged;
+    const days = daysSince(last);
+    if (days === 0) return t.today;
+    if (days === 1) return t.yesterday;
+    return t.daysAgo.replace('{count}', String(days));
   };
 
   return (
@@ -289,7 +316,7 @@ export const LibraryScreen: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 {pinnedExercises.slice(0, 2).map((ex) => {
                   const Icon = getCategoryIcon(ex.category);
-                  const color = CATEGORY_COLORS[ex.category] || '#60A5FA';
+                  const color = CATEGORY_COLORS[ex.category] || 'var(--cat-gym)';
                   const prChip = formatTypedPRChip(ex);
 
                   return (
@@ -301,13 +328,15 @@ export const LibraryScreen: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div 
                           className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: `${color}20`, color: color }}
+                          style={{ backgroundColor: tint(color, 12), color: color }}
                         >
                           <Icon className="w-4 h-4" />
                         </div>
-                        <span className="px-2 py-0.5 rounded bg-app-surface-2 border border-app text-xs font-bold text-app-accent tabular-nums">
-                          {prChip}
-                        </span>
+                        {prChip && (
+                          <span className="px-2 py-0.5 rounded bg-app-surface-2 border border-app text-xs font-bold text-app-accent tabular-nums">
+                            {prChip}
+                          </span>
+                        )}
                       </div>
 
                       <div>
@@ -320,7 +349,7 @@ export const LibraryScreen: React.FC = () => {
                       </div>
 
                       <div className="flex items-center justify-between text-app-muted text-xs pt-1 border-t border-app/60">
-                        <span>{t.twoDaysAgo}</span>
+                        <span>{formatLastLogged(ex)}</span>
                         <TrendingUp className="w-3.5 h-3.5 text-app-accent" />
                       </div>
                     </div>
@@ -343,7 +372,7 @@ export const LibraryScreen: React.FC = () => {
 
             <div className="space-y-2">
               {filteredExercises.map(ex => {
-                const color = CATEGORY_COLORS[ex.category] || '#60A5FA';
+                const color = CATEGORY_COLORS[ex.category] || 'var(--cat-gym)';
                 const Icon = getCategoryIcon(ex.category);
                 const prChip = formatTypedPRChip(ex);
                 const isMenuOpen = activeMenuExId === ex.id;
@@ -367,7 +396,7 @@ export const LibraryScreen: React.FC = () => {
                       >
                         <div 
                           className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: `${color}15`, color: color }}
+                          style={{ backgroundColor: tint(color, 9), color: color }}
                         >
                           <Icon className="w-5 h-5" />
                         </div>
@@ -401,11 +430,15 @@ export const LibraryScreen: React.FC = () => {
                       {/* Right: PR Chip & Context Overflow */}
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="flex flex-col items-end">
-                          <span className="px-2 py-0.5 rounded bg-app-surface-2 border border-app text-xs font-bold text-app-accent tabular-nums">
-                            {prChip}
-                          </span>
-                          <span className="text-[10px] text-app-muted mt-0.5">
-                            3 sets logged
+                          {prChip && (
+                            <span className="px-2 py-0.5 rounded bg-app-surface-2 border border-app text-xs font-bold text-app-accent tabular-nums">
+                              {prChip}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-app-muted mt-0.5 tabular-nums">
+                            {history.get(ex.id)
+                              ? `${history.get(ex.id)!.setsLogged} ${t.sets.toLowerCase()} ${t.logged}`
+                              : t.neverLogged}
                           </span>
                         </div>
 

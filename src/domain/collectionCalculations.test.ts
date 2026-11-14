@@ -61,6 +61,41 @@ test('computeCollectionStats: correctly calculates sets, avg rest, and region br
   assert.equal(stats.regionSetCounts.chest, 4);
   // Back sets = 3 primary (lats)
   assert.equal(stats.regionSetCounts.back, 3);
+
+  // Arms: pull-up biceps primary (3) + bench triceps secondary (2) = 5 sets, the most-trained region
+  assert.equal(stats.regionSetCounts.arms, 5);
+  // Coverage is relative to that maximum (arms = 100)
+  assert.equal(stats.regionCoverage.arms, 100);
+  assert.equal(stats.regionCoverage.chest, 80);
+  assert.equal(stats.regionCoverage.back, 60);
+  // Delts only ever secondary: bench 4*0.5 + pull-up 3*0.5 = 3.5 of 5
+  assert.equal(stats.regionCoverage.delts, 70);
+  assert.equal(stats.regionCoverage.legs, 0);
+  assert.equal(stats.regionCoverage.core, 0);
+
+  // Per-muscle planned sets: primary 1.0, secondary 0.5
+  assert.equal(stats.muscleSetCounts.chest, 4);
+  assert.equal(stats.muscleSetCounts.triceps, 2);
+  assert.equal(stats.muscleSetCounts.lats, 3);
+  assert.equal(stats.muscleSetCounts.rear_delts, 1.5);
+  assert.equal(stats.muscleSetCounts.quads, undefined);
+});
+
+test('computeCollectionStats: empty plan has zero coverage; small muscles still land in a region', () => {
+  const empty = computeCollectionStats({ id: 'c', name: 'Empty', goal: 'skill', items: [] }, new Map());
+  assert.deepEqual(empty.regionCoverage, { chest: 0, delts: 0, arms: 0, back: 0, legs: 0, core: 0 });
+
+  const wrist: Exercise = {
+    id: 'wrist', name: 'Wrist Curl', category: 'gym', equipment: 'dumbbell',
+    primaryMuscles: ['forearms'], secondaryMuscles: [], trackingType: 'weight_reps',
+    defaultRestSec: 60, incrementKg: 1, source: 'custom'
+  };
+  const grip = computeCollectionStats(
+    { id: 'g', name: 'Grip', goal: 'endurance', items: [{ exerciseId: 'wrist', role: 'isolation', sets: 3, repsMin: 12, repsMax: 15, restSec: 60 }] },
+    new Map([['wrist', wrist]])
+  );
+  assert.equal(grip.regionSetCounts.arms, 3);
+  assert.equal(grip.regionCoverage.arms, 100);
 });
 
 test('filterAndSortExercises: supports searching, categories, and sorting', () => {

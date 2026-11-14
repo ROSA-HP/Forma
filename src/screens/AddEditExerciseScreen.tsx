@@ -29,7 +29,7 @@ import {
   MUSCLE_GROUPS, 
   REGION_ORDER, 
   REGION_MUSCLES, 
-  CATEGORY_COLORS 
+  CATEGORY_COLORS, tint 
 } from '../domain/constants.ts';
 import { formatMuscleName, formatRegionName, formatWeight } from '../domain/calculations.ts';
 import { HapticsService } from '../services/haptics.ts';
@@ -305,7 +305,7 @@ export const AddEditExerciseScreen: React.FC<AddEditExerciseScreenProps> = ({
                   type="button"
                   onClick={() => setCategory(cat)}
                   style={{
-                    backgroundColor: isSelected ? `${color}1f` : undefined,
+                    backgroundColor: isSelected ? tint(color, 12) : undefined,
                     borderColor: isSelected ? color : undefined,
                     borderInlineStartColor: color,
                     borderInlineStartWidth: '3px'
